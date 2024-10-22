@@ -85,6 +85,7 @@ def populate_database(
     table_order: list[str],
     tables: dict,
     dataframe: DataFrame,
+    alias_mapping: dict,
     connect_args: Optional[dict] = None,
     **engine_kwargs,
 ):
@@ -92,6 +93,8 @@ def populate_database(
         engine = initialize_database(db_uri, connect_args, **engine_kwargs)
     else:
         engine = initialize_default_database()
+    print(">> TABLE ORDER", table_order)
+    print(">> TABLES:", tables)
     execute_queries(engine, table_order, tables)
-    push_data_in_db(engine, dataframe, table_order)
+    push_data_in_db(engine, dataframe, table_order, alias_mapping)
     engine.dispose()

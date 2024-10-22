@@ -1,8 +1,13 @@
+import json
 import os
 import re
+from typing import Any, Dict, Type
+from datetime import datetime
 
 from dotenv import load_dotenv
 from openai import OpenAI
+from pydantic import BaseModel, Field
+
 
 load_dotenv()
 
@@ -15,6 +20,24 @@ def openai_chat_api(messages, *, model="gpt-4o", temperature=0, seed=42):
         messages=messages, model=model, temperature=temperature, seed=seed
     )
     return response.choices[0].message.content
+
+
+def openai_chat_api_structured(
+    messages, response_format: Type[BaseModel], model="gpt-4o", temperature=0, seed=42
+):
+    client = OpenAI(api_key=OPENAI_API_KEY)
+    completion = client.beta.chat.completions.parse(
+        messages=messages,
+        model=model,
+        temperature=temperature,
+        seed=seed,
+        response_format=response_format,
+    )
+    structured_response = completion.choices[0].message
+    if structured_response.parsed:
+        return structured_response.parsed
+    elif structured_response.refusal:
+        raise ValueError("OpenAI refused to complete input")
 
 
 def generate_schema(data: dict) -> dict:
@@ -58,8 +81,72 @@ Output Schema:
     return data
 
 
-def generate_constraints(data: dict) -> dict:
+def generate_alias_mapping(data: dict) -> dict:
     system_prompt = """
+### Task ###
+Generate a mapping between the column names used in the schema and the original column names from the raw data.
+
+### Instructions ###
+1. Analyze the provided schema and raw data structure.
+2. Identify any columns in the schema that have been renamed from the original data.
+3. Create a mapping where keys are the schema column names and values are the original column names found inn the raw data structure.
+4. Output the mapping in JSON format.
+
+### Input Data ###
+1. schema: The relational schema with the possibly renamed columns.
+2. raw_data_structure: The original column names and data types from the raw data.
+
+### Desired Output ###
+A JSON object representing the alias mapping with no added text above or below the curly braces other than ```json ... ```. Map string to string, do not include any string to lists. Do not repeated schema_column_names multiple times:
+```json
+{
+  "schema_column_name1": "original_column_name1",
+  "schema_column_name2": "original_column_name2",
+  ...
+}
+```
+"""
+    user_prompt = f"""
+### Schema ###
+{data['schema']}
+
+### Raw Data Structure ###
+{data['structure']}
+
+### Raw Data Samples ###
+{data['raw_data']}
+
+Alias Mapping:
+"""
+
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt},
+    ]
+    mapping_output = openai_chat_api(messages)
+    print(">> GENERATED ALIAS MAPPING ", mapping_output)
+
+    data["alias_mapping"] = {}
+    try:
+        if mapping_output:
+            cleaned_output = re.search(r"{.*}", mapping_output, re.DOTALL)
+            if cleaned_output:
+                alias_mapping = json.loads(cleaned_output.group(0))
+                data["alias_mapping"] = alias_mapping
+            else:
+                raise ValueError("Failed to extract JSON from the output")
+        else:
+            raise ValueError("No mapping output generated")
+    except (json.JSONDecodeError, ValueError) as e:
+        print(f"ERROR: Failed to parse alias mapping output: {e}")
+        print("Error Causing Mapping Generation:", mapping_output)
+
+    print(">> OUTPUTTED ALIAS MAPPING ", data["alias_mapping"])
+    return data
+
+
+def generate_constraints(data: dict) -> dict:
+    system_prompt = f"""
 ### Task ###
 Identify constraints in the relational database schema provided by the user.
 
@@ -69,6 +156,7 @@ Identify constraints in the relational database schema provided by the user.
 3. Determine any additional constraints that should be applied to ensure data integrity.
 4. Create strict and detailed constraints.
 5. Refrain from directly generating SQL Queries.
+6. Only use functions that SQLite supports, so don't use YEAR(), CURDATE(), NOW(), strftime, or any other non-deterministic functions. Use numbers instead. The current date is {datetime.now():%Y-%m-%d} (if relevent to a timing constraint).
 
 ### Input Data ###
 1. raw_data: An example of the raw data that will be store in the schema.

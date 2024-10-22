@@ -1,6 +1,7 @@
 # VulcanDB
 
 <!-- MAIN BODY -->
+
 ## Installation
 
 Before you start the installation process make sure you have python installed.
@@ -62,8 +63,6 @@ Replace `<input_file_name>` with the name of the file for which you want to gene
 
 `-f`: Specifies the file name for which SQL queries will be generated. This is a required argument.
 To know more about other options, you can execute the following command:
-
-To know more about other options you can execute the following command:
 
 ```bash
 python -m vulcan -h
