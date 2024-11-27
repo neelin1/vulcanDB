@@ -93,8 +93,6 @@ def populate_database(
         engine = initialize_database(db_uri, connect_args, **engine_kwargs)
     else:
         engine = initialize_default_database()
-    print(">> TABLE ORDER", table_order)
-    print(">> TABLES:", tables)
     execute_queries(engine, table_order, tables)
     push_data_in_db(engine, dataframe, table_order, alias_mapping)
     engine.dispose()

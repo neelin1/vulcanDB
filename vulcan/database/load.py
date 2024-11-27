@@ -6,7 +6,6 @@ def push_data_in_db(engine, dataframe, table_order, alias_mapping):
     # Reflect the database schema
     metadata = MetaData()
     metadata.reflect(bind=engine)
-
     # Process and insert data for each table
     for table_name in table_order:
         table = metadata.tables.get(table_name)

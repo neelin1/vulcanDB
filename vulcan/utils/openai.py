@@ -50,7 +50,7 @@ Create a relational database schema from the raw data and structure provided by 
 2. Define a relational schema that organizes this data into tables.
 3. For each table, specify the columns, their data types, and relationships between tables.
 4. Ignore unrelated or redundant columns while generating the schema.
-5. Create multiple tables only when it is required.
+5. Create multiple tables ONLY when it is required
 6. Use the auto increment clause for primary key if required.
 7. Refrain from directly generating SQL Queries.
 
@@ -156,14 +156,15 @@ Identify constraints in the relational database schema provided by the user.
 3. Determine any additional constraints that should be applied to ensure data integrity.
 4. Create strict and detailed constraints.
 5. Refrain from directly generating SQL Queries.
-6. Only use functions that SQLite supports, so don't use YEAR(), CURDATE(), NOW(), strftime, or any other non-deterministic functions. Use numbers instead. The current date is {datetime.now():%Y-%m-%d} (if relevent to a timing constraint).
+6. Only use functions that SQLite supports, so don't use any nondeterminisitc functions in constraints like strftime(), YEAR(), CURDATE(), NOW(), strftime, or any other non-deterministic functions. Use numbers instead. The current date is {datetime.now():%Y-%m-%d} (if relevent to a timing constraint).
+7. DO NOT USE the UNIQUE constraint. It causes too many issues because the sample is not always representative of the full data. 
 
 ### Input Data ###
 1. raw_data: An example of the raw data that will be store in the schema.
 2. schema: A detailed relational schema including table names, column names with data types, and table relationships.
 
 ## Desired Output ###
-constrainted schema: A relational schema consisting of all applicable constraints.
+constrainted schema: A relational schema consisting of all applicable constraints. 
 """
     user_prompt = f"""
 ### Raw Data Sample ###
