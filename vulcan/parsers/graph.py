@@ -13,7 +13,7 @@ def create_query_dependent_graph(queries: list):
         dependency_graph.setdefault(table_name, [])
         for fk_table in table_info["foreign_keys"]:
             dependency_graph.setdefault(fk_table, []).append(table_name)
-    # dependency graph with edges point from dependencies to dependents
+    # Dependency graph with edges pointing from dependencies to dependents
     return dependency_graph, tables
 
 

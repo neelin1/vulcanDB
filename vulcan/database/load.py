@@ -8,6 +8,7 @@ def push_data_in_db(engine, dataframe, table_order, alias_mapping):
     metadata.reflect(bind=engine)
     # Process and insert data for each table
     for table_name in table_order:
+        print("TABLES", metadata.tables)
         table = metadata.tables.get(table_name)
         if table is None:
             print(f"Table {table_name} does not exist in the database.")
