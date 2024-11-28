@@ -54,7 +54,7 @@ def main():
         type=str,
         choices=["postgres", "sqlite"],
         help="Type of the database",
-        default="sqlite",
+        default="postgres",
     )
 
     args = parser.parse_args()

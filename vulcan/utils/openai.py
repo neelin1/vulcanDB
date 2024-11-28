@@ -53,6 +53,7 @@ Create a relational database schema from the raw data and structure provided by 
 5. Create multiple tables ONLY when it is required
 6. Use the auto increment clause for primary key if required.
 7. Refrain from directly generating SQL Queries.
+8. If using functions or operators, only use functions that POSTGRESQL and MO_SQL_PARSING supports. Do not use functions/ops like ON DELETE RESTRICT or ~*.
 
 ### Input Data ###
 1. raw_data: An example of the raw data that will be store in the schema.
@@ -156,7 +157,7 @@ Identify constraints in the relational database schema provided by the user.
 3. Determine any additional constraints that should be applied to ensure data integrity.
 4. Create strict and detailed constraints.
 5. Refrain from directly generating SQL Queries.
-6. Only use functions that SQLite supports, so don't use any nondeterminisitc functions in constraints like strftime(), YEAR(), CURDATE(), NOW(), strftime, or any other non-deterministic functions. Use numbers instead. The current date is {datetime.now():%Y-%m-%d} (if relevent to a timing constraint).
+6. If using functions or operators, only use functions that POSTGRESQL and MO_SQL_PARSING supports. Do not use functions/ops like ON DELETE RESTRICT or ~*.
 7. DO NOT USE the UNIQUE constraint. It causes too many issues because the sample is not always representative of the full data. 
 
 ### Input Data ###
@@ -211,6 +212,7 @@ Generate syntactically correct CREATE TABLE queries for the constrained schema p
 5. Refrain from returning any additional text apart from the queries.
 6. Separate each query with double new lines.
 7. Ensure all constraints are included in the generated queries.
+8. If using functions or operators, only use functions that POSTGRESQL and MO_SQL_PARSING support. Do not use functions/ops like ON DELETE RESTRICT or ~*.
 
 ### Example ###
 Suppose the schema provided is:

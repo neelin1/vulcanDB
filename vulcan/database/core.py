@@ -18,13 +18,38 @@ def initialize_default_database(db_file: str = "default.db") -> Engine:
     Returns:
     - SQLAlchemy Engine instance for the SQLite database.
     """
+    print("Initializing SQLITE Database")
     db_uri = f"sqlite:///output/{db_file}"
-    engine = create_engine(db_uri, echo=True, future=True)
-    return engine
+    return create_engine(db_uri, echo=True, future=True)
+
+
+def initialize_postgres_database(
+    db_uri: str, connect_args: Optional[dict] = None, **engine_kwargs
+) -> Engine:
+    """
+    Initializes a PostgreSQL database engine.
+
+    Parameters:
+    - db_uri: PostgreSQL database URI for connection.
+    - connect_args: Optional dictionary of connection arguments to be passed to the database.
+    - engine_kwargs: Additional keyword arguments to be passed to create_engine.
+
+    Returns:
+    - SQLAlchemy Engine instance for the PostgreSQL database.
+    """
+    print("Initializing POSTGRESQL Database")
+    if not db_uri.startswith("postgresql://"):
+        raise ValueError("Invalid URI: db_uri must start with 'postgresql://'")
+    if connect_args is None:
+        connect_args = {}
+    return create_engine(db_uri, echo=True, connect_args=connect_args, **engine_kwargs)
 
 
 def initialize_database(
-    db_uri: str, connect_args: Optional[dict] = None, **engine_kwargs
+    db_uri: str,
+    db_type: str = "postgres",
+    connect_args: Optional[dict] = None,
+    **engine_kwargs,
 ) -> Engine:
     """
     Initializes a database engine.
@@ -37,12 +62,12 @@ def initialize_database(
     Returns:
     - SQLAlchemy Engine instance.
     """
-    if connect_args is None:
-        connect_args = {}
-    engine = create_engine(
-        db_uri, echo=True, connect_args=connect_args, **engine_kwargs
-    )
-    return engine
+    if db_type == "postgres" and db_uri:
+        return initialize_postgres_database(db_uri, connect_args, **engine_kwargs)
+    elif db_type == "sqlite":
+        return initialize_default_database()
+    else:
+        raise ValueError(f"Unsupported db_type: {db_type}")
 
 
 def execute_queries(
@@ -89,10 +114,9 @@ def populate_database(
     connect_args: Optional[dict] = None,
     **engine_kwargs,
 ):
-    if db_uri:
-        engine = initialize_database(db_uri, connect_args, **engine_kwargs)
-    else:
-        engine = initialize_default_database()
+    engine = initialize_database(
+        db_uri=db_uri, db_type="postgres", connect_args=connect_args, **engine_kwargs
+    )
     execute_queries(engine, table_order, tables)
     push_data_in_db(engine, dataframe, table_order, alias_mapping)
     engine.dispose()
