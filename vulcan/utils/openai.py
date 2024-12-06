@@ -13,8 +13,6 @@ load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-unsupported = "ON DELETE RESTRICT, ON DELETE CASCADE, ~, ~*"
-
 
 def openai_chat_api(messages, *, model="gpt-4o", temperature=0, seed=42):
     client = OpenAI(api_key=OPENAI_API_KEY)
@@ -55,7 +53,7 @@ Create a relational database schema from the raw data and structure provided by 
 5. Create multiple tables ONLY when it is required
 6. Use the auto increment clause for primary key if required.
 7. Refrain from directly generating SQL Queries.
-8. If using functions or operators, only use ones that POSTGRESQL/MO_SQL_PARSING/SQLITE support. Do not use functions/ops like {unsupported}.
+8. If using functions or operators, only use ones that POSTGRESQL supports.
 9. Table names should be lower case.
 
 ### Input Data ###
@@ -95,13 +93,14 @@ Generate a mapping between the column names used in the schema and the original 
 2. Identify any columns in the schema that have been renamed from the original data.
 3. Create a mapping where keys are the schema column names and values are the original column names found inn the raw data structure.
 4. Output the mapping in JSON format.
+7. Do not include None or N/A for columns not present in the original dataframe, just dont include them.
 
 ### Input Data ###
 1. schema: The relational schema with the possibly renamed columns.
 2. raw_data_structure: The original column names and data types from the raw data.
 
 ### Desired Output ###
-A JSON object representing the alias mapping with no added text above or below the curly braces other than ```json ... ```. Map string to string, do not include any string to lists. Do not repeated schema_column_names multiple times:
+A JSON object representing the alias mapping with no added text above or below the curly braces other than ```json ... ```. Map string to string, do not include any string to lists. Do not repeated schema_column_names multiple times.
 ```json
 {
   "schema_column_name1": "original_column_name1",
@@ -160,9 +159,9 @@ Identify constraints in the relational database schema provided by the user.
 3. Determine any additional constraints that should be applied to ensure data integrity.
 4. Create strict and detailed constraints.
 5. Refrain from directly generating SQL Queries.
-6. If using functions or operators, only use ones that POSTGRESQL/MO_SQL_PARSING/SQLITE support. Do not use functions/ops like {unsupported}.
-7. Table names should be lower case.
+6. If using functions or operators, only use ones that POSTGRESQL supports.
 8. DO NOT USE the UNIQUE constraint. It causes too many issues because the sample is not always representative of the full data. 
+9. Do not use the ~* operator, it will cause an error.
 
 ### Input Data ###
 1. raw_data: An example of the raw data that will be store in the schema.
@@ -216,8 +215,11 @@ Generate syntactically correct CREATE TABLE queries for the constrained schema p
 5. Refrain from returning any additional text apart from the queries.
 6. Separate each query with double new lines.
 7. Ensure all constraints are included in the generated queries.
-8. If using functions or operators, only use ones that POSTGRESQL/MO_SQL_PARSING/SQLITE support. Do not use functions/ops like {unsupported}.
-9. Table names should be lower case.
+8. If using functions or operators, only use ones that POSTGRESQL/MO_SQL_PARSING/SQLITE support.
+9. Use quotations around table and column names to allow for different cases.
+10. Table names should be lower case.
+9. Do not use the ~* operator, it will cause an error.
+
 
 ### Example ###
 Suppose the schema provided is:
@@ -232,11 +234,11 @@ employees
     - age must be greater than 18 (Check Constraint).
 
 Based on the above schema the output should be:
-CREATE TABLE employees (
-    id INT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    age INT CHECK (age > 18),
-    salary DECIMAL(10, 2)
+CREATE TABLE "employees" (
+    "id" INT PRIMARY KEY,
+    "name" VARCHAR(100) NOT NULL,
+    "age" INT CHECK (age > 18),
+    "salary" DECIMAL(10, 2)
 );
 """
 
@@ -257,6 +259,6 @@ SQL Queries for {data["database"]}:
         {"role": "user", "content": user_prompt},
     ]
     queries = openai_chat_api(messages)
-    data["queries"] = format_sql_queries(queries)
+    data["queries"] = format_sql_queries(queries)  # type: ignore
     print(">> GENERATED QUERIES ", data["queries"])
     return data
