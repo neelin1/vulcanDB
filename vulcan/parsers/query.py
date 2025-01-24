@@ -1,4 +1,3 @@
-from mo_sql_parsing import parse
 from pglast import parse_sql
 from pglast.enums import ConstrType
 from pglast.ast import CreateStmt, ColumnDef, Constraint, RawStmt

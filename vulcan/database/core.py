@@ -86,6 +86,12 @@ def execute_queries(
     with engine.connect() as conn:
         transaction = conn.begin()
         try:
+            # drop tables if they exist in database
+            for table_name in reversed(
+                table_order
+            ):  # reversing to drop in dependency order
+                conn.execute(text(f'DROP TABLE IF EXISTS "{table_name}" CASCADE'))
+                print(f"Table {table_name} dropped")
             for table_name in table_order:
                 query = tables[table_name]["query"]
                 conn.execute(text(query))

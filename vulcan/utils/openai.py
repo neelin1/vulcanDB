@@ -1,7 +1,7 @@
 import json
 import os
 import re
-from typing import Any, Dict, Type
+from typing import Any, Dict, List, Type
 from datetime import datetime
 
 from dotenv import load_dotenv
@@ -22,22 +22,43 @@ def openai_chat_api(messages, *, model="gpt-4o", temperature=0, seed=42):
     return response.choices[0].message.content
 
 
+class ColumnMapping(BaseModel):
+    dbColumn: str
+    csvColumn: str
+
+
+class PushSchema(BaseModel):
+    mapping: List[ColumnMapping]
+    creationOrder: List[str]
+
+
 def openai_chat_api_structured(
-    messages, response_format: Type[BaseModel], model="gpt-4o", temperature=0, seed=42
+    messages, *, model="gpt-4o", temperature=0, seed=42, response_format=None
 ):
+    """
+    Similar to openai_chat_api, but enforces a structured output
+    using the Beta OpenAI API features for structured JSON output.
+    """
     client = OpenAI(api_key=OPENAI_API_KEY)
+    # enforces schema adherence with response_format
     completion = client.beta.chat.completions.parse(
         messages=messages,
         model=model,
         temperature=temperature,
         seed=seed,
-        response_format=response_format,
+        response_format=response_format,  # type: ignore
     )
+
     structured_response = completion.choices[0].message
-    if structured_response.parsed:
+    # Catch refusals
+    if structured_response.refusal:
+        raise ValueError(
+            "OpenAI refused to complete input: " + structured_response.refusal
+        )
+    elif structured_response.parsed:
         return structured_response.parsed
-    elif structured_response.refusal:
-        raise ValueError("OpenAI refused to complete input")
+    else:
+        raise ValueError("No structured output or refusal was returned.")
 
 
 def generate_schema(data: dict) -> dict:
@@ -83,69 +104,82 @@ Output Schema:
     return data
 
 
-def generate_alias_mapping(data: dict) -> dict:
+def generate_push_data_info(
+    schema: str, raw_data_structure: str, raw_data_samples: str
+) -> PushSchema:
+    """
+    Produces a JSON object containing:
+      - A minimal column mapping (only items that differ between CSV and DB).
+      - A creationOrder array specifying the table creation order.
+
+    Returns a PushSchema object with .mapping and .creationOrder
+    """
+
     system_prompt = """
 ### Task ###
-Generate a mapping between the column names used in the schema and the original column names from the raw data.
+Generate two pieces of information for the client:
 
-### Instructions ###
-1. Analyze the provided schema and raw data structure.
-2. Identify any columns in the schema that have been renamed from the original data.
-3. Create a mapping where keys are the schema column names and values are the original column names found inn the raw data structure.
-4. Output the mapping in JSON format.
-7. Do not include None or N/A for columns not present in the original dataframe, just dont include them.
+1. A minimal "mapping" array describing how CSV columns map to database columns. 
+   - Each item is an object { "dbColumn": ..., "csvColumn": ... }.
+   - Only include items where the DB column name is different from the CSV column name.
+   - Do not map any items related to ids
+
+2. A "creationOrder" array listing tables in the correct order for creation, 
+   such that no table depends on a table that appears after it.
 
 ### Input Data ###
-1. schema: The relational schema with the possibly renamed columns.
-2. raw_data_structure: The original column names and data types from the raw data.
+- schema (the relational schema already generated)
+- raw_data_structure (the CSV's columns and data types)
+- raw_data_samples (sample data from the CSV)
 
-### Desired Output ###
-A JSON object representing the alias mapping with no added text above or below the curly braces other than ```json ... ```. Map string to string, do not include any string to lists. Do not repeated schema_column_names multiple times.
-```json
+### Output Format ###
+Return valid JSON strictly matching this format:
+
 {
-  "schema_column_name1": "original_column_name1",
-  "schema_column_name2": "original_column_name2",
-  ...
+  "mapping": [
+    {
+      "dbColumn": "str",
+      "csvColumn": "str"
+    }
+    ...
+  ],
+  "creationOrder": [
+    "tableA",
+    "tableB",
+    ...
+  ]
 }
-```
+
+No extra text.
 """
     user_prompt = f"""
-### Schema ###
-{data['schema']}
+Schema:
+{schema}
 
-### Raw Data Structure ###
-{data['structure']}
+Raw Data Structure:
+{raw_data_structure}
 
-### Raw Data Samples ###
-{data['raw_data']}
+Raw Data Samples:
+{raw_data_samples}
 
-Alias Mapping:
+Return:
+1. mapping (only changed columns)
+2. creationOrder
 """
 
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt},
     ]
-    mapping_output = openai_chat_api(messages)
-    print(">> GENERATED ALIAS MAPPING ", mapping_output)
 
-    data["alias_mapping"] = {}
-    try:
-        if mapping_output:
-            cleaned_output = re.search(r"{.*}", mapping_output, re.DOTALL)
-            if cleaned_output:
-                alias_mapping = json.loads(cleaned_output.group(0))
-                data["alias_mapping"] = alias_mapping
-            else:
-                raise ValueError("Failed to extract JSON from the output")
-        else:
-            raise ValueError("No mapping output generated")
-    except (json.JSONDecodeError, ValueError) as e:
-        print(f"ERROR: Failed to parse alias mapping output: {e}")
-        print("Error Causing Mapping Generation:", mapping_output)
-
-    print(">> OUTPUTTED ALIAS MAPPING ", data["alias_mapping"])
-    return data
+    result = openai_chat_api_structured(
+        messages,
+        model="gpt-4o",
+        temperature=0,
+        seed=42,
+        response_format=PushSchema,
+    )
+    return result
 
 
 def generate_constraints(data: dict) -> dict:
