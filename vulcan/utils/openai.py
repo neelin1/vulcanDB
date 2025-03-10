@@ -76,6 +76,10 @@ Create a relational database schema from the raw data and structure provided by 
 7. Refrain from directly generating SQL Queries.
 8. If using functions or operators, only use ones that POSTGRESQL supports.
 9. Table names should be lower case.
+10. If the schema has multiple tables, use NATURAL KEYS where possible.
+11. Use existing unique columns as primary keys instead of creating new IDs. Foreign keys must reference natural key columns from parent tables. Ensure referenced columns have unique constraints.
+12. Tables should only be split when there's clear 1:N relationship potential.
+13. If it makes sense, separate into different tables (separating artists from tracks for example)
 
 ### Input Data ###
 1. raw_data: An example of the raw data that will be store in the schema.
@@ -194,8 +198,8 @@ Identify constraints in the relational database schema provided by the user.
 4. Create strict and detailed constraints.
 5. Refrain from directly generating SQL Queries.
 6. If using functions or operators, only use ones that POSTGRESQL supports.
-8. DO NOT USE the UNIQUE constraint. It causes too many issues because the sample is not always representative of the full data. 
-9. Do not use the ~* operator, it will cause an error.
+7. Do not use the ~* operator, it will cause an error.
+8. Any column that is referenced as a foreign key must be unique.
 
 ### Input Data ###
 1. raw_data: An example of the raw data that will be store in the schema.
@@ -254,8 +258,13 @@ Generate syntactically correct CREATE TABLE queries for the constrained schema p
 10. Table names should be lower case.
 9. Do not use the ~* operator, it will cause an error.
 
+### Key Requirements ###
+1. Use NATURAL PRIMARY KEYS from existing columns where possible
+2. Foreign keys must reference actual data columns (not surrogate IDs)
+3. Add UNIQUE constraints on natural key columns
+4. Only use surrogate keys when no suitable natural key combination exists
 
-### Example ###
+### Example 1 ###
 Suppose the schema provided is:
 employees
   - Columns:
@@ -274,6 +283,21 @@ CREATE TABLE "employees" (
     "age" INT CHECK (age > 18),
     "salary" DECIMAL(10, 2)
 );
+
+### Example 2 ###
+If we are creating the tracks schema, we want to reference artist_name as the primary key and not make up some new column.
+CREATE TABLE "artists" (
+    "artist_name" VARCHAR PRIMARY KEY,
+    ...
+);
+
+CREATE TABLE "tracks" (
+    "track_name" VARCHAR,
+    "artist_name" VARCHAR REFERENCES artists(artist_name),
+    ...
+    PRIMARY KEY (track_name, artist_name)
+);
+
 """
 
     user_prompt = f"""
