@@ -346,9 +346,11 @@ constrainted schema: A relational schema consisting of all applicable constraint
 ### Raw Data Sample ###
 {data['raw_data']}
 
-
 ### Schema so far###
 {data["schema"]}
+
+### Table Traits ###
+{data["table_traits"]}
 
 
 Constrained Schema:
@@ -369,47 +371,51 @@ Generate syntactically correct CREATE TABLE queries for the constrained schema p
 
 ### Instructions ###
 1. Using the provided constrained schema, generate CREATE TABLE statements for the {data["database"]} database.
-2. Ensure each table includes all specified columns, data types, and constraints.
+2. Ensure each table includes all specified columns, data types, and constraints mentioned in the `Constrained Schema`.
 3. The queries should be syntactically correct to run on a {data["database"]} database.
 4. Return only the generated queries.
 5. Refrain from using sub-queries in CHECK constraint.
 6. Separate each query with double new lines.
-7. Ensure all constraints are included in the generated queries.
+7. Ensure all constraints from the `Constrained Schema` are included in the generated queries.
 8. If using functions or operators, only use ones that POSTGRESQL supports. For instance, do not use the ~* operator, it will cause an error.
-9. Use quotations around table and column names to allow for different cases.
-10. Table names should be lower case.
-11. If there's a surrogate PK, also keep the CSV-based column as UNIQUE + NOT NULL for lookups.
-12. If foreign keys reference that CSV-based column (or the surrogate PK), do so consistently.
+9. Use quotations around table and column names to allow for different cases (e.g., "TableName", "ColumnName").
+10. Table names should be lower case and perfectly match the schema generation (e.g., "tablename").
+11. If there's a surrogate PK (e.g., SERIAL), also ensure that any associated natural key / CSV-based unique column(s) from the `Constrained Schema` are marked `UNIQUE NOT NULL`.
+12. If foreign keys reference a natural key column (that is also `UNIQUE NOT NULL`) or a surrogate PK, do so consistently based on the `Constrained Schema`.
 13. Refrain from returning any additional text apart from the queries.
+14. (If `Table Traits` are provided and contain relevant entries): For tables identified as '1:n' in `Table Traits` (via `relation_to_raw: \"1:n\"` and the presence of `one_to_n` details):
+    a. Ensure all columns listed in `one_to_n.natural_key_cols` are defined as `UNIQUE NOT NULL` in the `CREATE TABLE` statement.
+    b. The column specified in `one_to_n.surrogate_pk_col` should be the `PRIMARY KEY` (typically `SERIAL PRIMARY KEY` or equivalent for auto-incrementing behavior).
+    c. This information from `Table Traits` complements and helps clarify the `Constrained Schema`. If there's a conflict, prioritize the structured `Table Traits` for these specific details (surrogate PK, natural keys for 1:n tables).
 
-### Key Requirements ###
-1. Use NATURAL PRIMARY KEYS from existing columns where possible
-2. Foreign keys must reference actual data columns (not surrogate IDs)
-3. Add UNIQUE constraints on natural key columns
-4. Only use surrogate keys when no suitable natural key combination exists
-
-## Example usage
-If 'artist_id' is SERIAL PK, and 'artist_name' is also UNIQUE NOT NULL, referencing might be:
-CREATE TABLE "artists" (
-    "artist_id" SERIAL PRIMARY KEY,
-    "artist_name" VARCHAR UNIQUE NOT NULL
-);
-
-Then if a child references "artist_id", do:
-FOREIGN KEY("artist_id") REFERENCES "artists"("artist_id")
-
-BUT the child might also reference "artist_name" if the schema said so. Just ensure consistency.
+### Key Requirements (Derived from `Constrained Schema`) ###
+1. Use natural primary keys from existing columns if the `Constrained Schema` indicates them as PKs and no surrogate key is specified.
+2. Ensure all columns designated as `UNIQUE` or part of a natural key in the `Constrained Schema` have `UNIQUE` constraints (and `NOT NULL` if appropriate, especially for natural keys).
 """
 
+    table_traits_list = data.get("table_traits", [])
+    # Ensure table_traits_list is a list of objects that have model_dump_json if it's not empty
+    if table_traits_list and hasattr(table_traits_list[0], "model_dump_json"):
+        table_traits_json_list = [
+            trait.model_dump_json(indent=2) for trait in table_traits_list
+        ]
+        table_traits_prompt_string = (
+            "[\\n" + ",\\n".join(table_traits_json_list) + "\\n]"
+        )
+    elif table_traits_list:  # If it's already dicts/simple structures
+        table_traits_prompt_string = json.dumps(table_traits_list, indent=2)
+    else:
+        table_traits_prompt_string = "[]"
+
     user_prompt = f"""
-### Input Data ###
-A relational constrained schema
+### Constrained Schema ###
 {data["constrained_schema"]}
 
+### Table Traits (for additional context, especially for 1:n tables and their keys) ###
+{table_traits_prompt_string}
 
 ## Desired Output ###
 CREATE TABLE statements for creating the given constrained schema.
-
 
 SQL Queries for {data["database"]}:
 """
