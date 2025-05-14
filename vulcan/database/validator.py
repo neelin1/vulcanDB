@@ -69,6 +69,7 @@ def validate_content(
     dataframe: pd.DataFrame,
     table_order: List[str],
     table_traits: List[TableTraitsWithName],
+    single_table: bool = False,
 ):
     """
     Validates the database content and schema based on table traits and dataframe.
@@ -78,11 +79,18 @@ def validate_content(
         dataframe: Pandas DataFrame containing the raw data.
         table_order: List of table names in creation order.
         table_traits: List of TableTraitsWithName objects.
+        single_table: Boolean flag, if True, enforces a single table in the schema.
 
     Raises:
         ValueError: If any validation fails.
     """
     print("Starting content validation...")
+
+    # Validate single table constraint if flag is true
+    if single_table and len(table_order) > 1:
+        raise ValueError(
+            f"Single table flag is true, but schema contains {len(table_order)} tables: {', '.join(table_order)}."
+        )
 
     # Validate 1:n table surrogate PK auto-increment
     _validate_one_to_n_surrogate_pk_auto_increment(engine, table_traits)
