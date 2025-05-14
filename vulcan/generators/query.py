@@ -1,5 +1,5 @@
 import vulcan.generators.metadata as vgm
-import vulcan.utils.openai as vuo
+import vulcan.utils.llm_helpers as vuo
 
 
 def generate_sql_queries(dataframe: str, db_type: str):

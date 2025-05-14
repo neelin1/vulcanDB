@@ -1,25 +1,10 @@
 import json
-import os
 import re
 from typing import Any, Dict, List, Type
 from datetime import datetime
-
-from dotenv import load_dotenv
-from openai import OpenAI
 from pydantic import BaseModel, Field
 
-
-load_dotenv()
-
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-
-
-def openai_chat_api(messages, *, model="gpt-4o", temperature=0, seed=42):
-    client = OpenAI(api_key=OPENAI_API_KEY)
-    response = client.chat.completions.create(
-        messages=messages, model=model, temperature=temperature, seed=seed
-    )
-    return response.choices[0].message.content
+from vulcan.utils.api_helpers import openai_chat_api, openai_chat_api_structured
 
 
 class ColumnMapping(BaseModel):
@@ -32,35 +17,6 @@ class PushSchema(BaseModel):
     creationOrder: List[str]
 
 
-def openai_chat_api_structured(
-    messages, *, model="gpt-4o", temperature=0, seed=42, response_format=None
-):
-    """
-    Similar to openai_chat_api, but enforces a structured output
-    using the Beta OpenAI API features for structured JSON output.
-    """
-    client = OpenAI(api_key=OPENAI_API_KEY)
-    # enforces schema adherence with response_format
-    completion = client.beta.chat.completions.parse(
-        messages=messages,
-        model=model,
-        temperature=temperature,
-        seed=seed,
-        response_format=response_format,  # type: ignore
-    )
-
-    structured_response = completion.choices[0].message
-    # Catch refusals
-    if structured_response.refusal:
-        raise ValueError(
-            "OpenAI refused to complete input: " + structured_response.refusal
-        )
-    elif structured_response.parsed:
-        return structured_response.parsed
-    else:
-        raise ValueError("No structured output or refusal was returned.")
-
-
 def generate_schema(data: dict) -> dict:
     system_prompt = """
 ### Task ###
@@ -71,22 +27,26 @@ Create a relational database schema from the raw data and structure provided by 
 2. Define a relational schema that organizes this data into tables.
 3. For each table, specify the columns, their data types, and relationships between tables.
 4. Ignore unrelated or redundant columns while generating the schema.
-5. Create multiple tables ONLY when it is required
-6. Use the auto increment clause for primary key if required.
-7. Refrain from directly generating SQL Queries.
-8. If using functions or operators, only use ones that POSTGRESQL supports.
-9. Table names should be lower case.
-10. If the schema has multiple tables, use NATURAL KEYS where possible.
-11. Use existing unique columns as primary keys instead of creating new IDs. Foreign keys must reference natural key columns from parent tables. Ensure referenced columns have unique constraints.
-12. Tables should only be split when there's clear 1:N relationship potential.
-13. If it makes sense, separate into different tables (separating artists from tracks for example)
+5. Create multiple tables ONLY when it makes sense to do so.
+6. If creating multiple tables makes sense. You have raw CSV data with certain columns; you can either:
+   - Use a NATURAL primary key from those columns if unique, or
+   - If you must create a surrogate column (SERIAL, etc.), you must still keep the original
+     CSV column as UNIQUE and NOT NULL, so we can do lookups if needed.
+7. If there's a 1:N or N:N relationship, define foreign keys referencing
+   the parent's primary or unique columns. 
+8. Only split tables when there's a genuine need (like multiple repeated fields).
+9. This schema must remain consistent so that once created, we can do 'lookup or insert'
+   by the CSV columns if the real PK is synthetic.
+10. Refrain from directly generating SQL. Just produce the conceptual schema.
+11. If using functions or operators, only use ones that POSTGRESQL/SQLAlchemy supports.
+12. Table names should be lower case.
 
 ### Input Data ###
 1. raw_data: An example of the raw data that will be store in the schema.
 2. structure: Information about the datatype for each column
 
 ## Desired Output ###
-schema: A detailed relational schema including table names, column names with data types, and table relationships.
+schema: A detailed textual relational schema including table names, column names with data types, and table relationships.
 """
     user_prompt = f"""
 ### Raw Data Sample ###
@@ -197,9 +157,13 @@ Identify constraints in the relational database schema provided by the user.
 3. Determine any additional constraints that should be applied to ensure data integrity.
 4. Create strict and detailed constraints.
 5. Refrain from directly generating SQL Queries.
-6. If using functions or operators, only use ones that POSTGRESQL supports.
+6. If using functions or operators, only use ones that POSTGRESQL/SQLAlchemy supports.
 7. Do not use the ~* operator, it will cause an error.
-8. Any column that is referenced as a foreign key must be unique.
+8. Any column that is referenced as a foreign key must be UNIQUE.
+9. If a table uses a surrogate auto-inc PK but also has a CSV column that is unique, 
+   ensure that CSV column is UNIQUE NOT NULL.
+10. Foreign keys must reference the correct parent PK or unique column.
+11. No direct SQL yet, just produce a textual constrained schema description.
 
 ### Input Data ###
 1. raw_data: An example of the raw data that will be store in the schema.
@@ -213,7 +177,7 @@ constrainted schema: A relational schema consisting of all applicable constraint
 {data['raw_data']}
 
 
-### Schema ###
+### Schema so far###
 {data["schema"]}
 
 
@@ -250,13 +214,14 @@ Generate syntactically correct CREATE TABLE queries for the constrained schema p
 3. The queries should be syntactically correct to run on a {data["database"]} database.
 4. Return only the generated queries.
 5. Refrain from using sub-queries in CHECK constraint.
-5. Refrain from returning any additional text apart from the queries.
 6. Separate each query with double new lines.
 7. Ensure all constraints are included in the generated queries.
-8. If using functions or operators, only use ones that POSTGRESQL/MO_SQL_PARSING/SQLITE support.
+8. If using functions or operators, only use ones that POSTGRESQL supports. For instance, do not use the ~* operator, it will cause an error.
 9. Use quotations around table and column names to allow for different cases.
 10. Table names should be lower case.
-9. Do not use the ~* operator, it will cause an error.
+11. If there's a surrogate PK, also keep the CSV-based column as UNIQUE + NOT NULL for lookups.
+12. If foreign keys reference that CSV-based column (or the surrogate PK), do so consistently.
+13. Refrain from returning any additional text apart from the queries.
 
 ### Key Requirements ###
 1. Use NATURAL PRIMARY KEYS from existing columns where possible
@@ -264,40 +229,17 @@ Generate syntactically correct CREATE TABLE queries for the constrained schema p
 3. Add UNIQUE constraints on natural key columns
 4. Only use surrogate keys when no suitable natural key combination exists
 
-### Example 1 ###
-Suppose the schema provided is:
-employees
-  - Columns:
-    - id INT PRIMARY KEY
-    - name VARCHAR(100) NOT NULL
-    - department_id INT REFERENCES Departments(id)
-  - Constraints:
-    - id is the primary key.
-    - name must not be null.
-    - age must be greater than 18 (Check Constraint).
-
-Based on the above schema the output should be:
-CREATE TABLE "employees" (
-    "id" INT PRIMARY KEY,
-    "name" VARCHAR(100) NOT NULL,
-    "age" INT CHECK (age > 18),
-    "salary" DECIMAL(10, 2)
-);
-
-### Example 2 ###
-If we are creating the tracks schema, we want to reference artist_name as the primary key and not make up some new column.
+## Example usage
+If 'artist_id' is SERIAL PK, and 'artist_name' is also UNIQUE NOT NULL, referencing might be:
 CREATE TABLE "artists" (
-    "artist_name" VARCHAR PRIMARY KEY,
-    ...
+    "artist_id" SERIAL PRIMARY KEY,
+    "artist_name" VARCHAR UNIQUE NOT NULL
 );
 
-CREATE TABLE "tracks" (
-    "track_name" VARCHAR,
-    "artist_name" VARCHAR REFERENCES artists(artist_name),
-    ...
-    PRIMARY KEY (track_name, artist_name)
-);
+Then if a child references "artist_id", do:
+FOREIGN KEY("artist_id") REFERENCES "artists"("artist_id")
 
+BUT the child might also reference "artist_name" if the schema said so. Just ensure consistency.
 """
 
     user_prompt = f"""
