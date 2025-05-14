@@ -159,8 +159,8 @@ class OneToNTraitDetail(BaseModel):
     surrogate_pk_col: str = Field(
         description="Name of the surrogate primary key column (e.g., 'artist_id')."
     )
-    natural_key_cols: List[str] = Field(
-        description="List of column names that form the natural key (e.g., ['artist_name'])."
+    natural_key_col: str = Field(
+        description="Column name that forms the natural key (e.g., 'artist_name')."
     )
 
 
@@ -183,7 +183,7 @@ class SingleTableTraits(BaseModel):
     )
     one_to_n: Optional[OneToNTraitDetail] = Field(
         default=None,
-        description="Details for 1:n tables, including surrogate PK and natural key(s). Present if relation_to_raw is '1:n', otherwise null.",
+        description="Details for 1:n tables, including surrogate PK and natural key. Present if relation_to_raw is '1:n', otherwise null.",
     )
     dependencies: List[DependencyDetail] = Field(
         default_factory=list,
@@ -237,7 +237,7 @@ For a single database table, extract its structural traits based on the provided
 
 3.  **`one_to_n`**: If `relation_to_raw` is "1:n", provide this object. Otherwise, this field MUST be null or omitted.
     -   **`surrogate_pk_col`**: Identify the surrogate primary key column for the 1:n table. This is often an auto-incrementing ID column (e.g., `employer_id`). The schema might state "(surrogate key for natural key...)".
-    -   **`natural_key_cols`**: Identify the list of column(s) that form the natural key for the 1:n table. These are columns from the raw data that uniquely identify records in the conceptual 1:n entity (e.g., `employer_name`). Schema might state "(natural key, direct mapping from raw$...)".
+    -   **`natural_key_col`**: Identify the column name that forms the natural key for the 1:n table. This is a column from the raw data that uniquely identifies records in the conceptual 1:n entity (e.g., `employer_name`). Schema might state "(natural key, direct mapping from raw$...)".
 
 4.  **`dependencies`**: List tables that the current table depends on via foreign keys.
     - This information is usually in the "Traits" section (e.g., "depends on: parent_table_name") or in column definitions (e.g., "FOREIGN KEY REFERENCES parent_table_name(parent_pk_col)").
@@ -261,7 +261,7 @@ Return a single JSON object strictly matching the following Pydantic model struc
 class SingleTableTraits(BaseModel):
     relation_to_raw: Literal["1:1", "1:n"]
     mapping: List[ColumnMappingDetail] # where ColumnMappingDetail is {"raw_csv_col": str, "table_col": str}
-    one_to_n: Optional[OneToNTraitDetail] # where OneToNTraitDetail is {"surrogate_pk_col": str, "natural_key_cols": List[str]}
+    one_to_n: Optional[OneToNTraitDetail] # where OneToNTraitDetail is {"surrogate_pk_col": str, "natural_key_col": str}
     dependencies: List[DependencyDetail] # where DependencyDetail is {"parent_table_name": str, "local_fk_col": str}
 ```
 Ensure `mapping` and `dependencies` are provided as empty lists if no such items exist. `one_to_n` MUST be provided if `relation_to_raw` is '1:n' and MUST be `null` (or omitted) if `relation_to_raw` is '1:1'.
@@ -384,7 +384,7 @@ Generate syntactically correct CREATE TABLE queries for the constrained schema p
 12. If foreign keys reference a natural key column (that is also `UNIQUE NOT NULL`) or a surrogate PK, do so consistently based on the `Constrained Schema`.
 13. Refrain from returning any additional text apart from the queries.
 14. (If `Table Traits` are provided and contain relevant entries): For tables identified as '1:n' in `Table Traits` (via `relation_to_raw: \"1:n\"` and the presence of `one_to_n` details):
-    a. Ensure all columns listed in `one_to_n.natural_key_cols` are defined as `UNIQUE NOT NULL` in the `CREATE TABLE` statement.
+    a. Ensure all columns listed in `one_to_n.natural_key_col` are defined as `UNIQUE NOT NULL` in the `CREATE TABLE` statement.
     b. The column specified in `one_to_n.surrogate_pk_col` should be the `PRIMARY KEY` (typically `SERIAL PRIMARY KEY` or equivalent for auto-incrementing behavior).
     c. This information from `Table Traits` complements and helps clarify the `Constrained Schema`. If there's a conflict, prioritize the structured `Table Traits` for these specific details (surrogate PK, natural keys for 1:n tables).
 
