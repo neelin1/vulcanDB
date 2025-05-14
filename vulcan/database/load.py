@@ -148,11 +148,24 @@ def push_data_in_db(
 
                 # gather insert_data ------------------------------------------------
                 insert_data: Dict[str, Any] = {}
-                for db_col, csv_col in info["col_map"].items():
-                    if csv_col is None:
-                        insert_data[db_col] = None  # placeholder – may fill FK later
+                # Get the names of primary key columns for the current table
+                pk_col_names = {pk_col.name for pk_col in info["pk_cols"]}
+
+                for db_col_name, csv_column_name_or_none in info["col_map"].items():
+                    if csv_column_name_or_none is None:
+                        # This db_col_name is not directly mapped from a CSV column.
+                        # Check if it is one of the primary key columns.
+                        if db_col_name in pk_col_names:
+                            # If it's a PK and not from CSV, it's a surrogate key.
+                            # Omit it from insert_data; the database will generate its value.
+                            continue
+                        else:
+                            # It's not a PK, but also not from CSV (e.g., an FK placeholder).
+                            # Set its value to None in insert_data for now.
+                            insert_data[db_col_name] = None
                     else:
-                        insert_data[db_col] = row_data.get(csv_col)
+                        # This db_col_name is mapped from a CSV column (csv_column_name_or_none).
+                        insert_data[db_col_name] = row_data.get(csv_column_name_or_none)
 
                 # resolve FKs from previously inserted parents ---------------------
                 for col in info["table_obj"].columns:
@@ -202,6 +215,8 @@ def push_data_in_db(
                     ):
                         per_row_pk_memory[tbl_name] = result.inserted_primary_key[0]
                 except exc.IntegrityError as e:
+                    # print the insert_data
+                    print(insert_data)
                     logger.warning(
                         f"Row {idx}: integrity error inserting into {tbl_name}: {e.orig}; dropped"
                     )
