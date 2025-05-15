@@ -10,6 +10,32 @@ from vulcan.utils.llm_helpers import TableTraitsWithName
 
 logger = logging.getLogger(__name__)
 
+_error_regexes = [
+    # duplicate keys for unique constraint
+    (
+        re.compile(
+            r"duplicate key value.*unique constraint \"(?P<constraint>[^\"]+)\""
+        ),
+        lambda m: f"duplicate-key:{m.group('constraint')}",
+    ),
+    # invalid-syntax type errors ----------------------------------------------
+    (
+        re.compile(r"invalid input syntax for type (?P<type>\w+):\s*\".*?\""),
+        lambda m: f"invalid-{m.group('type')}",
+    ),
+    # generic fallback ---------------------------------------------------------
+    (re.compile(r".+"), lambda m: m.group(0).split(":")[0].strip()),
+]
+
+
+def _classify_error(msg: str) -> str:
+    """Return a short, stable key describing *why* a row was dropped."""
+    for rx, fn in _error_regexes:
+        m = rx.search(msg)
+        if m:
+            return fn(m)
+    return "unknown"
+
 
 def _build_table_lookup(
     metadata: MetaData,
@@ -83,7 +109,11 @@ def _build_table_lookup(
             "pk_cols": list(tbl_obj.primary_key.columns),
             "natural_key_col": natural_key_col,
             "cache": {},  # filled in later for 1:n
-            "stats": {"attempt": 0, "dropped": 0},
+            "stats": {
+                "attempt": 0,
+                "dropped": 0,
+                "errors": {},  # error_key → {"count", "sample"}
+            },
         }
 
     return lookup
@@ -144,7 +174,8 @@ def push_data_in_db(
             for tbl_name in table_order:
                 info = lookup[tbl_name]
                 traits = info["traits"]
-                info["stats"]["attempt"] += 1
+                stats = info["stats"]
+                stats["attempt"] += 1
 
                 # gather insert_data ------------------------------------------------
                 insert_data: Dict[str, Any] = {}
@@ -214,20 +245,46 @@ def push_data_in_db(
                         and len(result.inserted_primary_key) > 0
                     ):
                         per_row_pk_memory[tbl_name] = result.inserted_primary_key[0]
-                except exc.IntegrityError as e:
-                    # print the insert_data
-                    print(insert_data)
+                except (exc.IntegrityError, exc.DataError) as e:
+                    err_msg = str(e.orig)
+                    parent_key = _classify_error(err_msg)
+
+                    def _record(tbl_info, key, msg, is_block=False):
+                        s = tbl_info["stats"]
+                        # If this was a *blocked* table it never reached the
+                        # "attempt += 1" line, so compensate here.
+                        if is_block:
+                            s["attempt"] += 1
+                        s["dropped"] += 1
+                        bucket = s["errors"].setdefault(key, {"count": 0, "sample": []})
+                        bucket["count"] += 1
+                        if len(bucket["sample"]) < 3:
+                            bucket["sample"].append(
+                                {
+                                    "row_idx": idx,
+                                    "data_excerpt": str(insert_data)[:200],
+                                    "msg": msg[:300],
+                                }
+                            )
+
+                    # record parent failure
+                    _record(info, parent_key, err_msg)
+
+                    # since all tables after this one are blocked, we record the failure for all of them
+                    for dep_tbl in table_order[table_order.index(tbl_name) + 1 :]:
+                        dep_info = lookup[dep_tbl]
+                        blocked_key = f"blocked-by-{tbl_name}"
+                        _record(
+                            dep_info,
+                            blocked_key,
+                            f"blocked because {tbl_name} failed ({parent_key})",
+                            is_block=True,
+                        )
+
                     logger.warning(
-                        f"Row {idx}: integrity error inserting into {tbl_name}: {e.orig}; dropped"
+                        f"Row {idx}: {parent_key} inserting into {tbl_name}: "
+                        f"{err_msg}; dropped and blocked dependants"
                     )
-                    info["stats"]["dropped"] += 1
-                    # skip dependents for the rest of this row
-                    break
-                except exc.DataError as e:
-                    logger.warning(
-                        f"Row {idx}: data error inserting into {tbl_name}: {e.orig}; dropped"
-                    )
-                    info["stats"]["dropped"] += 1
                     break
 
     return lookup
