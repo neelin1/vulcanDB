@@ -165,13 +165,11 @@ def push_data_in_db(
 
     # Step 3: Insert Rows
     for idx, (_, row) in enumerate(dataframe.iterrows()):
-        with engine.begin() as connection:
-            row_data = row.to_dict()
-            per_row_pk_memory: Dict[str, Any] = (
-                {}
-            )  # saves newly generated PKs for this row
+        row_data = row.to_dict()
+        per_row_pk_memory: Dict[str, Any] = {}  # saves newly generated PKs for this row
 
-            for tbl_name in table_order:
+        for tbl_name in table_order:
+            with engine.begin() as connection:  # needs to be here, otherwise one failure rolls back entire transaction
                 info = lookup[tbl_name]
                 traits = info["traits"]
                 stats = info["stats"]

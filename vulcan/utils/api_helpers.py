@@ -36,7 +36,7 @@ def openai_chat_api_structured(
         raise ValueError("No structured output or refusal was returned.")
 
 
-def openai_chat_api(messages, *, model="gpt-4o", temperature=0, seed=42):
+def openai_chat_api(messages, *, model="gpt-4.1", temperature=0, seed=42):
     response = client.chat.completions.create(
         messages=messages, model=model, temperature=temperature, seed=seed
     )
