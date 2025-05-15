@@ -72,6 +72,10 @@ def run_pipeline(dataframe: pd.DataFrame, db_uri: str, single_table: bool):
             f"{tbl_name}: dropped {dropped}/{attempt} rows ({dropped_pct:.1f}%) during load"
         )
 
-    # The original app.py returned 'response' which was data_dict.
-    # The notebook doesn't explicitly return from its main flow, but data_dict holds all generated info.
-    return data_dict
+    return {
+        "engine": engine,
+        "lookup": lookup,
+        "table_order": table_order,
+        "table_traits": table_traits,  # Pass along for consistency if needed
+        "dataframe_rows": total_rows,  # Original number of rows in the input dataframe
+    }

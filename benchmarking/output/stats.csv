@@ -1,3 +1,0 @@
-primary_key,foreign_key,unique
-iphone.csv,FAILED,"Validation Error for 1:n table 'variants': Surrogate PK column 'variant_asin' is not configured for auto-increment. Details: column_default='None', is_identity='NO'"
-spotify.csv,FAILED,'engine'

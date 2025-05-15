@@ -1,0 +1,61 @@
+========== Overall Benchmark Summary (Across All CSVs) ==========
+
+Total CSVs Processed: 1
+  Successfully Processed: 1
+  Failed to Process: 0
+
+Grand Total Drop Percentage (across all tables in all successful CSVs): 66.67% (1634/2451 records)
+
+Grand Total Most Common Drop Reasons (summed across all tables in all successful CSVs):
+  - new row for relation "tracks" violates check constraint "tracks_key_check": 817 occurrences (50.0% of total drops)
+  - blocked-by-tracks: 817 occurrences (50.0% of total drops)
+
+
+
+========== Per-CSV Breakdown ==========
+
+--- CSV File: spotify.csv ---
+
+Status: SUCCESS
+
+  Original rows in CSV: 817
+
+  Summary for this CSV (across its tables):
+    Total records attempted: 2451
+    Total records dropped: 1634 (66.7%)
+    Drop reasons for this CSV:
+      - new row for relation "tracks" violates check constraint "tracks_key_check": 817
+      - blocked-by-tracks: 817
+
+  -- Table: artists --
+    Load: dropped 0/817 rows (0.0%)
+    Data after load: 0 rows
+    FAILURE: Table is EMPTY after load attempts.
+
+  -- Table: tracks --
+    Load: dropped 817/817 rows (100.0%)
+    Drop Reason Chart: benchmarking/output/charts/drops_spotify_tracks.png
+    Drop Reasons Breakdown:
+      · new row for relation "tracks" violates check constraint "tracks_key_check": 817 rows (100.0% of attempts for this table)
+          Sample 1 (CSV row 0): new row for relation "tracks" violates check constraint "tracks_key_check"
+DETAIL:  Failing row contains (1, Seven (feat. Latto) (Explicit Ver.), 1, 2...
+          Sample 2 (CSV row 1): new row for relation "tracks" violates check constraint "tracks_key_check"
+DETAIL:  Failing row contains (2, LALA, 2, 2023, 3, 23, 92, C#, Major, 71, ...
+          Sample 3 (CSV row 2): new row for relation "tracks" violates check constraint "tracks_key_check"
+DETAIL:  Failing row contains (3, vampire, 3, 2023, 6, 30, 138, F, Major, 5...
+    Data after load: 0 rows
+    FAILURE: Table is EMPTY after load attempts.
+
+  -- Table: streaming_data --
+    Load: dropped 817/817 rows (100.0%)
+    Drop Reason Chart: benchmarking/output/charts/drops_spotify_streaming_data.png
+    Drop Reasons Breakdown:
+      · blocked-by-tracks: 817 rows (100.0% of attempts for this table)
+          Sample 1 (CSV row 0): blocked because tracks failed (new row for relation "tracks" violates check constraint "tracks_key_check")...
+          Sample 2 (CSV row 1): blocked because tracks failed (new row for relation "tracks" violates check constraint "tracks_key_check")...
+          Sample 3 (CSV row 2): blocked because tracks failed (new row for relation "tracks" violates check constraint "tracks_key_check")...
+    Data after load: 0 rows
+    FAILURE: Table is EMPTY after load attempts.
+
+
+----------------------------------------
