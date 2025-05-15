@@ -283,6 +283,10 @@ def generate_summary_report(all_csv_results: list):
                     f"    Total records dropped: {csv_overall.get('rows_dropped_across_tables', 0)} "
                     f"({csv_overall.get('dropped_pct_across_tables', 0):.1f}%)"
                 )
+                # Add total constraints generated
+                report_lines.append(
+                    f"    Total constraints generated: {csv_overall.get('total_constraints_generated', 'N/A')}"
+                )
                 if csv_overall.get("error_breakdown_across_tables"):
                     report_lines.append("    Drop reasons for this CSV:")
                     for reason, count in csv_overall[

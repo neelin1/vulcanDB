@@ -61,6 +61,18 @@ def run_pipeline(dataframe: pd.DataFrame, db_uri: str, single_table: bool):
     print("Data insertion complete!")
 
     total_rows = len(dataframe)
+
+    # Count constraints from queries
+    total_constraints_count = 0
+    constraint_keywords = ["PRIMARY KEY", "FOREIGN KEY", "UNIQUE", "CHECK"]
+    if queries:
+        for query_string in queries:  # queries is expected to be a list of SQL strings
+            if isinstance(query_string, str):
+                for keyword in constraint_keywords:
+                    total_constraints_count += query_string.upper().count(
+                        keyword.upper()
+                    )
+
     for tbl_name in table_order:
         s = lookup.get(tbl_name, {}).get(
             "stats", {"attempt": 0, "dropped": 0}
@@ -78,4 +90,5 @@ def run_pipeline(dataframe: pd.DataFrame, db_uri: str, single_table: bool):
         "table_order": table_order,
         "table_traits": table_traits,  # Pass along for consistency if needed
         "dataframe_rows": total_rows,  # Original number of rows in the input dataframe
+        "total_constraints_count": total_constraints_count,  # Add the count here
     }

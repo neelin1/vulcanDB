@@ -45,6 +45,7 @@ def run_single_csv_benchmark(csv_path: str, db_uri: str, single_table: bool) -> 
         engine = pipeline_output["engine"]
         lookup = pipeline_output["lookup"]
         table_order = pipeline_output["table_order"]
+        total_constraints_for_csv = pipeline_output.get("total_constraints_count", 0)
 
         # Initialize overall stats for this specific CSV
         csv_total_attempted = 0
@@ -154,6 +155,7 @@ def run_single_csv_benchmark(csv_path: str, db_uri: str, single_table: bool) -> 
                 else 0
             ),
             "error_breakdown_across_tables": csv_error_breakdown,
+            "total_constraints_generated": total_constraints_for_csv,
         }
         result_for_this_csv["status"] = "SUCCESS"
         logger.info(f"Successfully processed CSV: {csv_filename}")

@@ -4,14 +4,13 @@ Total CSVs Processed: 1
   Successfully Processed: 1
   Failed to Process: 0
 
-Grand Total Drop Percentage (across all tables in all successful CSVs): 17.75% (290/1634 records)
+Grand Total Drop Percentage (across all tables in all successful CSVs): 66.67% (1634/2451 records)
 
 Overall Drop Reasons Chart (All CSVs & Tables): benchmarking/output/charts/drops_grand_total_summary.png\n
 Grand Total Most Common Drop Reasons (summed across all tables in all successful CSVs):
-  - new row for relation "tracks" violates check constraint "tracks_cover_url_check": 193 occurrences (66.6% of total drops)
-  - invalid-integer: 68 occurrences (23.4% of total drops)
-  - insert or update on table "tracks" violates foreign key constraint "tracks_artist_id_fkey": 28 occurrences (9.7% of total drops)
-  - invalid-bigint: 1 occurrences (0.3% of total drops)
+  - blocked-by-tracks: 817 occurrences (50.0% of total drops)
+  - new row for relation "tracks" violates check constraint "tracks_key_check": 613 occurrences (37.5% of total drops)
+  - new row for relation "tracks" violates check constraint "tracks_cover_url_check": 204 occurrences (12.5% of total drops)
 
 
 
@@ -24,64 +23,50 @@ Status: SUCCESS
   Original rows in CSV: 817
 
   Summary for this CSV (across its tables):
-    Total records attempted: 1634
-    Total records dropped: 290 (17.7%)
+    Total records attempted: 2451
+    Total records dropped: 1634 (66.7%)
+    Total constraints generated: 27
     Drop reasons for this CSV:
-      - new row for relation "tracks" violates check constraint "tracks_cover_url_check": 193
-      - invalid-integer: 68
-      - insert or update on table "tracks" violates foreign key constraint "tracks_artist_id_fkey": 28
-      - invalid-bigint: 1
+      - new row for relation "tracks" violates check constraint "tracks_cover_url_check": 204
+      - new row for relation "tracks" violates check constraint "tracks_key_check": 613
+      - blocked-by-tracks: 817
 
   -- Table: artists --
     Load: dropped 0/817 rows (0.0%)
-    Data after load: 360 rows
-    Head of table data:
- artist_id       artist_name  artist_count
-         2       Myke Towers             1
-         3    Olivia Rodrigo             1
-         4      Taylor Swift             1
-         5         Bad Bunny             1
-         6 Dave, Central Cee             2
+    Data after load: 0 rows
+    FAILURE: Table is EMPTY after load attempts.
 
   -- Table: tracks --
-    Load: dropped 290/817 rows (35.5%)
+    Load: dropped 817/817 rows (100.0%)
     Drop Reason Chart: benchmarking/output/charts/drops_spotify_tracks.png
     Drop Reasons Breakdown:
-      · new row for relation "tracks" violates check constraint "tracks_cover_url_check": 193 rows (23.6% of attempts for this table)
+      · new row for relation "tracks" violates check constraint "tracks_cover_url_check": 204 rows (25.0% of attempts for this table)
           Sample 1 (CSV row 0): new row for relation "tracks" violates check constraint "tracks_cover_url_check"
 DETAIL:  Failing row contains (1, Seven (feat. Latto) (Explicit Ver.)...
           Sample 2 (CSV row 9): new row for relation "tracks" violates check constraint "tracks_cover_url_check"
 DETAIL:  Failing row contains (10, La Bebe - Remix, 10, 2023, 3, 17, ...
           Sample 3 (CSV row 10): new row for relation "tracks" violates check constraint "tracks_cover_url_check"
-DETAIL:  Failing row contains (11, un x100to, 11, 2023, 4, 17, 2876, ...
-      · invalid-integer: 68 rows (8.3% of attempts for this table)
-          Sample 1 (CSV row 12): invalid input syntax for type integer: "1,281"
-LINE 1: ...4, 14, 3528, 98, '387570742', 80, 156, '182', 24, '1,281', 1...
-                            ...
-          Sample 2 (CSV row 20): invalid input syntax for type integer: "1,093"
-LINE 1: ..., 6, 2, 1945, 87, '115364561', 74, 182, '87', 14, '1,093', 9...
-                            ...
-          Sample 3 (CSV row 41): invalid input syntax for type integer: "2,445"
-LINE 1: ..., 2016, 9, 21, 29536, 79, '2565529693', 281, 137, '2,445', 1...
-                            ...
-      · insert or update on table "tracks" violates foreign key constraint "tracks_artist_id_fkey": 28 rows (3.4% of attempts for this table)
-          Sample 1 (CSV row 183): insert or update on table "tracks" violates foreign key constraint "tracks_artist_id_fkey"
-DETAIL:  Key (artist_id)=(101) is not present in table "art...
-          Sample 2 (CSV row 189): insert or update on table "tracks" violates foreign key constraint "tracks_artist_id_fkey"
-DETAIL:  Key (artist_id)=(94) is not present in table "arti...
-          Sample 3 (CSV row 195): insert or update on table "tracks" violates foreign key constraint "tracks_artist_id_fkey"
-DETAIL:  Key (artist_id)=(94) is not present in table "arti...
-      · invalid-bigint: 1 rows (0.1% of attempts for this table)
-          Sample 1 (CSV row 478): invalid input syntax for type bigint: "BPM110KeyAModeMajorDanceability53Valence75Energy69Acousticness7Instrumentalness0Liveness17Speechiness3"
-LINE 1:...
-    Data after load: 527 rows
-    Head of table data:
- track_id     track_name  artist_id  released_year  released_month  released_day  in_spotify_playlists  in_spotify_charts   streams  in_apple_playlists  in_apple_charts  in_deezer_playlists  in_deezer_charts  in_shazam_charts  bpm key  mode  danceability  valence  energy  acousticness  instrumentalness  liveness  speechiness                                                        cover_url
-        2           LALA          2           2023               3            23                  1474                 48 133716286                  48              126                   58                14               382   92  C# Major            71       61      74             7                 0        10            4 https://i.scdn.co/image/ab67616d0000b2730656d5ce813ca3cc4b677e05
-        3        vampire          3           2023               6            30                  1397                113 140003974                  94              207                   91                14               949  138   F Major            51       32      53            17                 0        31            6 https://i.scdn.co/image/ab67616d0000b273e85259a1cae29a8d91f2093d
-        4   Cruel Summer          4           2019               8            23                  7858                100 800840817                 116              207                  125                12               548  170   A Major            55       58      72            11                 0        11           15 https://i.scdn.co/image/ab67616d0000b273e787cffec20aa2a396a61647
-        5 WHERE SHE GOES          5           2023               5            18                  3133                 50 303236322                  84              133                   87                15               425  144   A Minor            65       23      80            14                63        11            6 https://i.scdn.co/image/ab67616d0000b273ab5c9cd818ad6ed3e9b79cd1
-        6       Sprinter          6           2023               6             1                  2186                 91 183706234                  67              213                   88                17               946  141  C# Major            92       66      58            19                 0         8           24 https://i.scdn.co/image/ab67616d0000b273e3a09a9ae3f1fa102c110e60
+DETAIL:  Failing row contains (11, un x100to, 11, 2023, 4, 17, 83, F#...
+      · new row for relation "tracks" violates check constraint "tracks_key_check": 613 rows (75.0% of attempts for this table)
+          Sample 1 (CSV row 1): new row for relation "tracks" violates check constraint "tracks_key_check"
+DETAIL:  Failing row contains (2, LALA, 2, 2023, 3, 23, 92, C#, Major, 71, ...
+          Sample 2 (CSV row 2): new row for relation "tracks" violates check constraint "tracks_key_check"
+DETAIL:  Failing row contains (3, vampire, 3, 2023, 6, 30, 138, F, Major, 5...
+          Sample 3 (CSV row 3): new row for relation "tracks" violates check constraint "tracks_key_check"
+DETAIL:  Failing row contains (4, Cruel Summer, 4, 2019, 8, 23, 170, A, Maj...
+    Data after load: 0 rows
+    FAILURE: Table is EMPTY after load attempts.
+
+  -- Table: streaming_data --
+    Load: dropped 817/817 rows (100.0%)
+    Drop Reason Chart: benchmarking/output/charts/drops_spotify_streaming_data.png
+    Drop Reasons Breakdown:
+      · blocked-by-tracks: 817 rows (100.0% of attempts for this table)
+          Sample 1 (CSV row 0): blocked because tracks failed (new row for relation "tracks" violates check constraint "tracks_cover_url_check")...
+          Sample 2 (CSV row 1): blocked because tracks failed (new row for relation "tracks" violates check constraint "tracks_key_check")...
+          Sample 3 (CSV row 2): blocked because tracks failed (new row for relation "tracks" violates check constraint "tracks_key_check")...
+    Data after load: 0 rows
+    FAILURE: Table is EMPTY after load attempts.
 
 
 ----------------------------------------
