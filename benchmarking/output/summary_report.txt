@@ -1,20 +1,238 @@
 ========== Overall Benchmark Summary (Across All CSVs) ==========
 
-Total CSVs Processed: 1
-  Successfully Processed: 1
+Total CSVs Processed: 4
+  Successfully Processed: 4
   Failed to Process: 0
 
-Grand Total Drop Percentage (across all tables in all successful CSVs): 66.67% (1634/2451 records)
+Grand Total Drop Percentage (across all tables in all successful CSVs): 20.58% (13888/67474 records)
 
 Overall Drop Reasons Chart (All CSVs & Tables): benchmarking/output/charts/drops_grand_total_summary.png\n
 Grand Total Most Common Drop Reasons (summed across all tables in all successful CSVs):
-  - blocked-by-tracks: 817 occurrences (50.0% of total drops)
-  - new row for relation "tracks" violates check constraint "tracks_key_check": 613 occurrences (37.5% of total drops)
-  - new row for relation "tracks" violates check constraint "tracks_cover_url_check": 204 occurrences (12.5% of total drops)
+  - blocked-by-product: 8859 occurrences (63.8% of total drops)
+  - duplicate-key:product_product_asin_key: 2953 occurrences (21.3% of total drops)
+  - null value in column "retention_status_id" of relation "customer" violates not-null constraint: 1000 occurrences (7.2% of total drops)
+  - invalid-integer: 68 occurrences (0.5% of total drops)
+  - date/time field value out of range: 4 occurrences (0.0% of total drops)
+  - duplicate-key:track_track_artist_unique: 3 occurrences (0.0% of total drops)
+  - invalid-bigint: 1 occurrences (0.0% of total drops)
 
 
 
 ========== Per-CSV Breakdown ==========
+
+--- CSV File: iphone.csv ---
+
+Status: SUCCESS
+
+  Original rows in CSV: 2960
+
+  Summary for this CSV (across its tables):
+    Total records attempted: 11840
+    Total records dropped: 11816 (99.8%)
+    Total constraints generated: 13
+    Drop reasons for this CSV:
+      - duplicate-key:product_product_asin_key: 2953
+      - blocked-by-product: 8859
+      - date/time field value out of range: 4
+
+  -- Table: product --
+    Load: dropped 2953/2960 rows (99.8%)
+    Drop Reason Chart: benchmarking/output/charts/drops_iphone_product.png
+    Drop Reasons Breakdown:
+      · duplicate-key:product_product_asin_key: 2953 rows (99.8% of attempts for this table)
+          Sample 1 (CSV row 1): duplicate key value violates unique constraint "product_product_asin_key"
+DETAIL:  Key (product_asin)=(B09G9BL5CP) already exists.
+...
+          Sample 2 (CSV row 2): duplicate key value violates unique constraint "product_product_asin_key"
+DETAIL:  Key (product_asin)=(B09G9BL5CP) already exists.
+...
+          Sample 3 (CSV row 3): duplicate key value violates unique constraint "product_product_asin_key"
+DETAIL:  Key (product_asin)=(B09G9BL5CP) already exists.
+...
+    Data after load: 7 rows
+    Head of table data:
+  id product_asin
+   1   B09G9BL5CP
+ 566   B09P82T3PZ
+ 724   B09G9J5JZX
+ 804   B0CHX1W1XY
+1053   B0BDK8LKPJ
+
+  -- Table: country --
+    Load: dropped 2953/2960 rows (99.8%)
+    Drop Reason Chart: benchmarking/output/charts/drops_iphone_country.png
+    Drop Reasons Breakdown:
+      · blocked-by-product: 2953 rows (99.8% of attempts for this table)
+          Sample 1 (CSV row 1): blocked because product failed (duplicate-key:product_product_asin_key)...
+          Sample 2 (CSV row 2): blocked because product failed (duplicate-key:product_product_asin_key)...
+          Sample 3 (CSV row 3): blocked because product failed (duplicate-key:product_product_asin_key)...
+    Data after load: 4 rows
+    Head of table data:
+ country_id              country
+          1                India
+          2                Japan
+          3 United Arab Emirates
+          4        United States
+
+  -- Table: variant --
+    Load: dropped 2953/2960 rows (99.8%)
+    Drop Reason Chart: benchmarking/output/charts/drops_iphone_variant.png
+    Drop Reasons Breakdown:
+      · blocked-by-product: 2953 rows (99.8% of attempts for this table)
+          Sample 1 (CSV row 1): blocked because product failed (duplicate-key:product_product_asin_key)...
+          Sample 2 (CSV row 2): blocked because product failed (duplicate-key:product_product_asin_key)...
+          Sample 3 (CSV row 3): blocked because product failed (duplicate-key:product_product_asin_key)...
+    Data after load: 7 rows
+    Head of table data:
+ id variant_asin                         variant  product_id
+  1   B09G9BQS98    Colour: MidnightSize: 256 GB           1
+  2   B09P81ZFKS Size: 256GBColor: (Product) RED         566
+  3   B09G91L347    Size: 512 GBColour: Midnight         724
+  4   B0CHX3TW6X        Colour: PinkSize: 128 GB         804
+  5   B0BDJ1B1CS        Colour: BlueSize: 256 GB        1053
+
+  -- Table: review --
+    Load: dropped 2957/2960 rows (99.9%)
+    Drop Reason Chart: benchmarking/output/charts/drops_iphone_review.png
+    Drop Reasons Breakdown:
+      · blocked-by-product: 2953 rows (99.8% of attempts for this table)
+          Sample 1 (CSV row 1): blocked because product failed (duplicate-key:product_product_asin_key)...
+          Sample 2 (CSV row 2): blocked because product failed (duplicate-key:product_product_asin_key)...
+          Sample 3 (CSV row 3): blocked because product failed (duplicate-key:product_product_asin_key)...
+      · date/time field value out of range: 4 rows (0.1% of attempts for this table)
+          Sample 1 (CSV row 723): date/time field value out of range: "22-10-2021"
+LINE 1: ...tr_d_rvw_ttl?ie=UTF8&ASIN=B09G91L347', 724, 3, 3, '22-10-202...
+                          ...
+          Sample 2 (CSV row 803): date/time field value out of range: "23-08-2024"
+LINE 1: ...tr_d_rvw_ttl?ie=UTF8&ASIN=B0CHX3TW6X', 804, 4, 1, '23-08-202...
+                          ...
+          Sample 3 (CSV row 1472): date/time field value out of range: "22-03-2024"
+LINE 1: ...r_d_rvw_ttl?ie=UTF8&ASIN=B0BN6ZKHB9', 1473, 6, 4, '22-03-202...
+                          ...
+    Data after load: 3 rows
+    Head of table data:
+ id                                                                                                   review_url  product_id  variant_id  country_id       date  is_verified  rating_score             review_title                                                                                                                                                                                                                                                                                                                                                                                                                                 review_description                            reviewed_in
+  1    https://www.amazon.in/gp/customer-reviews/R345SEIPU4N2XD/ref=cm_cr_getr_d_rvw_ttl?ie=UTF8&ASIN=B09G9BQS98           1           1           1 2024-11-08         True             4               No charger Every thing is good about iPhones, there's nothing compared to it's speed and ios but i was disappointed because there's no charger for it even though Indian judiciary told them to provide , still they haven't made any progress regarding charger. Why should we spend 62k and more than that for iPhones because of it's brand and Acessories comfort size and Features right if that's not there what's point of buying an iPhone.Thank you🙏    Reviewed in India on 11 August 2024
+  2 https://www.amazon.co.jp/gp/customer-reviews/R3EZTF89QUKCR6/ref=cm_cr_getr_d_rvw_ttl?ie=UTF8&ASIN=B09P81ZFKS         566           2           2 2024-05-09         True             1       Very good? How so?                                                                                       I purchased a refurbished iPhone 13, which is in very good condition. The screen is a dark and blurry aftermarket product that is far from the original. The battery is at 80%. I don't know what's so good about it. The quality is poor for this price. You might be better off buying it on Yahoo! Auctions or Mercari. I do not recommend purchasing it! Reviewed in Japan on September 5, 2024
+  3     https://www.amazon.in/gp/customer-reviews/R6KPLQZZL6CTM/ref=cm_cr_getr_d_rvw_ttl?ie=UTF8&ASIN=B0BDJ1B1CS        1053           5           1 2023-08-10         True             1 What's is getting hanged                                                                                                                                                                                                                                                             The what's up is getting hanged and when I am trying to return after the replace window is closed the Amazon is not ready to accept it.Just I am late by 10 hours the window is closed    Reviewed in India on 8 October 2023
+
+
+----------------------------------------
+
+--- CSV File: customer_experience_data.csv ---
+
+Status: SUCCESS
+
+  Original rows in CSV: 1000
+
+  Summary for this CSV (across its tables):
+    Total records attempted: 4000
+    Total records dropped: 2000 (50.0%)
+    Total constraints generated: 10
+    Drop reasons for this CSV:
+      - null value in column "retention_status_id" of relation "customer" violates not-null constraint: 1000
+
+  -- Table: gender --
+    Load: dropped 0/1000 rows (0.0%)
+    Data after load: 2 rows
+    Head of table data:
+ gender_id gender
+         1   Male
+         2 Female
+
+  -- Table: retention_status --
+    Load: dropped 1000/1000 rows (100.0%)
+    Data after load: 0 rows
+    FAILURE: Table is EMPTY after load attempts.
+
+  -- Table: location --
+    Load: dropped 0/1000 rows (0.0%)
+    Data after load: 3 rows
+    Head of table data:
+ location_id location
+           1    Urban
+           2 Suburban
+           3    Rural
+
+  -- Table: customer --
+    Load: dropped 1000/1000 rows (100.0%)
+    Drop Reason Chart: benchmarking/output/charts/drops_customer_experience_data_customer.png
+    Drop Reasons Breakdown:
+      · null value in column "retention_status_id" of relation "customer" violates not-null constraint: 1000 rows (100.0% of attempts for this table)
+          Sample 1 (CSV row 0): null value in column "retention_status_id" of relation "customer" violates not-null constraint
+DETAIL:  Failing row contains (1, 56, 1, 1, 11, 4, 18, ...
+          Sample 2 (CSV row 1): null value in column "retention_status_id" of relation "customer" violates not-null constraint
+DETAIL:  Failing row contains (2, 69, 1, 2, 10, 3, 2, 1...
+          Sample 3 (CSV row 2): null value in column "retention_status_id" of relation "customer" violates not-null constraint
+DETAIL:  Failing row contains (3, 46, 1, 1, 5, 5, 11, 4...
+    Data after load: 0 rows
+    FAILURE: Table is EMPTY after load attempts.
+
+
+----------------------------------------
+
+--- CSV File: mental_health_dataset.csv ---
+
+Status: SUCCESS
+
+  Original rows in CSV: 10000
+
+  Summary for this CSV (across its tables):
+    Total records attempted: 50000
+    Total records dropped: 0 (0.0%)
+    Total constraints generated: 19
+
+  -- Table: mental_health_risk --
+    Load: dropped 0/10000 rows (0.0%)
+    Data after load: 3 rows
+    Head of table data:
+ mental_health_risk_id mental_health_risk
+                     1               High
+                     2             Medium
+                     3                Low
+
+  -- Table: employment_status --
+    Load: dropped 0/10000 rows (0.0%)
+    Data after load: 4 rows
+    Head of table data:
+ employment_status_id employment_status
+                    1          Employed
+                    2           Student
+                    3     Self-employed
+                    4        Unemployed
+
+  -- Table: gender --
+    Load: dropped 0/10000 rows (0.0%)
+    Data after load: 4 rows
+    Head of table data:
+ gender_id            gender
+         1              Male
+         2            Female
+         3        Non-binary
+         4 Prefer not to say
+
+  -- Table: work_environment --
+    Load: dropped 0/10000 rows (0.0%)
+    Data after load: 3 rows
+    Head of table data:
+ work_environment_id work_environment
+                   1          On-site
+                   2           Remote
+                   3           Hybrid
+
+  -- Table: respondent --
+    Load: dropped 0/10000 rows (0.0%)
+    Data after load: 10000 rows
+    Head of table data:
+ respondent_id  age  gender_id  employment_status_id  work_environment_id mental_health_history seeks_treatment  stress_level  sleep_hours  physical_activity_days  depression_score  anxiety_score  social_support_score  productivity_score  mental_health_risk_id
+             1   56          1                     1                    1                   Yes             Yes             6          6.2                       3                28             17                    54                59.7                      1
+             2   46          2                     2                    1                    No             Yes            10          9.0                       4                30             11                    85                54.9                      1
+             3   32          2                     1                    1                   Yes              No             7          7.7                       2                24              7                    62                61.3                      2
+             4   60          3                     3                    1                    No              No             4          4.5                       4                 6              0                    95                97.0                      3
+             5   25          2                     3                    1                   Yes             Yes             3          5.4                       0                24             12                    70                69.0                      1
+
+
+----------------------------------------
 
 --- CSV File: spotify.csv ---
 
@@ -23,50 +241,57 @@ Status: SUCCESS
   Original rows in CSV: 817
 
   Summary for this CSV (across its tables):
-    Total records attempted: 2451
-    Total records dropped: 1634 (66.7%)
+    Total records attempted: 1634
+    Total records dropped: 72 (4.4%)
     Total constraints generated: 27
     Drop reasons for this CSV:
-      - new row for relation "tracks" violates check constraint "tracks_cover_url_check": 204
-      - new row for relation "tracks" violates check constraint "tracks_key_check": 613
-      - blocked-by-tracks: 817
+      - invalid-integer: 68
+      - duplicate-key:track_track_artist_unique: 3
+      - invalid-bigint: 1
 
-  -- Table: artists --
+  -- Table: key_mode --
     Load: dropped 0/817 rows (0.0%)
-    Data after load: 0 rows
-    FAILURE: Table is EMPTY after load attempts.
+    Data after load: 11 rows
+    Head of table data:
+ key_mode_id key  mode
+           1   B Major
+           2  C# Major
+           3   F Major
+           4   A Major
+           5   D Minor
 
-  -- Table: tracks --
-    Load: dropped 817/817 rows (100.0%)
-    Drop Reason Chart: benchmarking/output/charts/drops_spotify_tracks.png
+  -- Table: track --
+    Load: dropped 72/817 rows (8.8%)
+    Drop Reason Chart: benchmarking/output/charts/drops_spotify_track.png
     Drop Reasons Breakdown:
-      · new row for relation "tracks" violates check constraint "tracks_cover_url_check": 204 rows (25.0% of attempts for this table)
-          Sample 1 (CSV row 0): new row for relation "tracks" violates check constraint "tracks_cover_url_check"
-DETAIL:  Failing row contains (1, Seven (feat. Latto) (Explicit Ver.)...
-          Sample 2 (CSV row 9): new row for relation "tracks" violates check constraint "tracks_cover_url_check"
-DETAIL:  Failing row contains (10, La Bebe - Remix, 10, 2023, 3, 17, ...
-          Sample 3 (CSV row 10): new row for relation "tracks" violates check constraint "tracks_cover_url_check"
-DETAIL:  Failing row contains (11, un x100to, 11, 2023, 4, 17, 83, F#...
-      · new row for relation "tracks" violates check constraint "tracks_key_check": 613 rows (75.0% of attempts for this table)
-          Sample 1 (CSV row 1): new row for relation "tracks" violates check constraint "tracks_key_check"
-DETAIL:  Failing row contains (2, LALA, 2, 2023, 3, 23, 92, C#, Major, 71, ...
-          Sample 2 (CSV row 2): new row for relation "tracks" violates check constraint "tracks_key_check"
-DETAIL:  Failing row contains (3, vampire, 3, 2023, 6, 30, 138, F, Major, 5...
-          Sample 3 (CSV row 3): new row for relation "tracks" violates check constraint "tracks_key_check"
-DETAIL:  Failing row contains (4, Cruel Summer, 4, 2019, 8, 23, 170, A, Maj...
-    Data after load: 0 rows
-    FAILURE: Table is EMPTY after load attempts.
-
-  -- Table: streaming_data --
-    Load: dropped 817/817 rows (100.0%)
-    Drop Reason Chart: benchmarking/output/charts/drops_spotify_streaming_data.png
-    Drop Reasons Breakdown:
-      · blocked-by-tracks: 817 rows (100.0% of attempts for this table)
-          Sample 1 (CSV row 0): blocked because tracks failed (new row for relation "tracks" violates check constraint "tracks_cover_url_check")...
-          Sample 2 (CSV row 1): blocked because tracks failed (new row for relation "tracks" violates check constraint "tracks_key_check")...
-          Sample 3 (CSV row 2): blocked because tracks failed (new row for relation "tracks" violates check constraint "tracks_key_check")...
-    Data after load: 0 rows
-    FAILURE: Table is EMPTY after load attempts.
+      · invalid-integer: 68 rows (8.3% of attempts for this table)
+          Sample 1 (CSV row 12): invalid input syntax for type integer: "1,281"
+LINE 1: ...4, 14, 3528, 98, '387570742', 80, 156, '182', 24, '1,281', 1...
+                            ...
+          Sample 2 (CSV row 20): invalid input syntax for type integer: "1,093"
+LINE 1: ..., 6, 2, 1945, 87, '115364561', 74, 182, '87', 14, '1,093', 9...
+                            ...
+          Sample 3 (CSV row 41): invalid input syntax for type integer: "2,445"
+LINE 1: ..., 2016, 9, 21, 29536, 79, '2565529693', 281, 137, '2,445', 1...
+                            ...
+      · duplicate-key:track_track_artist_unique: 3 rows (0.4% of attempts for this table)
+          Sample 1 (CSV row 409): duplicate key value violates unique constraint "track_track_artist_unique"
+DETAIL:  Key (track_name, artist_name)=(SPIT IN MY FACE!, ThxSoMch) already...
+          Sample 2 (CSV row 513): duplicate key value violates unique constraint "track_track_artist_unique"
+DETAIL:  Key (track_name, artist_name)=(Take My Breath, The Weeknd) already...
+          Sample 3 (CSV row 647): duplicate key value violates unique constraint "track_track_artist_unique"
+DETAIL:  Key (track_name, artist_name)=(About Damn Time, Lizzo) already exi...
+      · invalid-bigint: 1 rows (0.1% of attempts for this table)
+          Sample 1 (CSV row 478): invalid input syntax for type bigint: "BPM110KeyAModeMajorDanceability53Valence75Energy69Acousticness7Instrumentalness0Liveness17Speechiness3"
+LINE 1:...
+    Data after load: 745 rows
+    Head of table data:
+ track_id                          track_name      artist_name  artist_count  released_year  released_month  released_day  in_spotify_playlists  in_spotify_charts   streams  in_apple_playlists  in_apple_charts  in_deezer_playlists  in_deezer_charts  in_shazam_charts  bpm  key_mode_id  danceability_%  valence_%  energy_%  acousticness_%  instrumentalness_%  liveness_%  speechiness_%                                                        cover_url
+        1 Seven (feat. Latto) (Explicit Ver.) Latto, Jung Kook             2           2023               7            14                   553                147 141381703                  43              263                   45                10               826  125            1              80         89        83              31                   0           8              4                                                        Not Found
+        2                                LALA      Myke Towers             1           2023               3            23                  1474                 48 133716286                  48              126                   58                14               382   92            2              71         61        74               7                   0          10              4 https://i.scdn.co/image/ab67616d0000b2730656d5ce813ca3cc4b677e05
+        3                             vampire   Olivia Rodrigo             1           2023               6            30                  1397                113 140003974                  94              207                   91                14               949  138            3              51         32        53              17                   0          31              6 https://i.scdn.co/image/ab67616d0000b273e85259a1cae29a8d91f2093d
+        4                        Cruel Summer     Taylor Swift             1           2019               8            23                  7858                100 800840817                 116              207                  125                12               548  170            4              55         58        72              11                   0          11             15 https://i.scdn.co/image/ab67616d0000b273e787cffec20aa2a396a61647
+        5                      WHERE SHE GOES        Bad Bunny             1           2023               5            18                  3133                 50 303236322                  84              133                   87                15               425  144            4              65         23        80              14                  63          11              6 https://i.scdn.co/image/ab67616d0000b273ab5c9cd818ad6ed3e9b79cd1
 
 
 ----------------------------------------
