@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from vulcan.utils.api_helpers import openai_chat_api, openai_chat_api_structured
 
 
-def generate_schema(data: dict) -> dict:
+def generate_schema(data: dict, feedback: Optional[str] = None) -> dict:
     system_prompt = """
 ### Task ###
 Create a relational database schema from the raw data and structure provided by the user.
@@ -41,6 +41,14 @@ Create a relational database schema from the raw data and structure provided by 
     if data.get("single_table", False):
         system_prompt += """
 14. The user has indicated that only a single table should be created for this database. Adhere strictly to this requirement. Do not create multiple tables."""
+
+    if feedback:
+        system_prompt += f"""
+
+### Previous Feedback for Correction ###
+{feedback}
+Please consider this feedback when generating your response and prioritize addressing these points.
+"""
 
     user_prompt = f"""
 ### Input Data ###
@@ -107,7 +115,7 @@ class TableList(BaseModel):
     )
 
 
-def generate_table_list(data: dict) -> dict:
+def generate_table_list(data: dict, feedback: Optional[str] = None) -> dict:
     """
     Generates a list of table names from the schema.
     """
@@ -138,6 +146,15 @@ For example:
 
 Output a JSON object containing the list of table names:
 """
+
+    if feedback:
+        system_prompt += f"""
+
+### Previous Feedback for Correction ###
+{feedback}
+Please consider this feedback when generating your response and prioritize addressing these points.
+"""
+
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt},
@@ -202,7 +219,7 @@ class TableTraitsWithName(SingleTableTraits):
     name: str = Field(description="Name of the table.")
 
 
-def generate_table_traits(data: dict) -> dict:
+def generate_table_traits(data: dict, feedback: Optional[str] = None) -> dict:
     """
     Generates detailed traits for each table in the schema.
     For each table, it identifies its relation to raw data, column mappings (only for differing names),
@@ -223,7 +240,7 @@ def generate_table_traits(data: dict) -> dict:
 
     all_table_traits: List[TableTraitsWithName] = []
 
-    system_prompt = """
+    system_prompt_template = """
 ### Task ###
 For a single database table, extract its structural traits based on the provided overall schema, raw data structure, and table name. The traits include its relationship to raw data, column mappings (only if names differ from CSV), details for 1:n relationships (surrogate PK, natural keys), and dependencies on other tables.
 
@@ -274,6 +291,14 @@ class SingleTableTraits(BaseModel):
 Ensure `mapping` and `dependencies` are provided as empty lists if no such items exist. `one_to_n` MUST be provided if `relation_to_raw` is '1:n' and MUST be `null` (or omitted) if `relation_to_raw` is '1:1'.
 """
 
+    if feedback:
+        system_prompt_template += f"""
+
+### Previous Feedback for Correction (apply generally to all tables) ###
+{feedback}
+Please consider this feedback when generating traits for all tables and prioritize addressing these points.
+"""
+
     for table_name in table_list:
         user_prompt = f"""
 ### Schema ###
@@ -288,7 +313,7 @@ Ensure `mapping` and `dependencies` are provided as empty lists if no such items
 Extract traits for the table "{table_name}":
 """
         messages = [
-            {"role": "system", "content": system_prompt},
+            {"role": "system", "content": system_prompt_template},
             {"role": "user", "content": user_prompt},
         ]
 
@@ -323,7 +348,7 @@ Extract traits for the table "{table_name}":
     return data
 
 
-def generate_constraints(data: dict) -> dict:
+def generate_constraints(data: dict, feedback: Optional[str] = None) -> dict:
     system_prompt = f"""
 ### Task ###
 Identify constraints in the relational database schema provided by the user.
@@ -369,6 +394,15 @@ constrainted schema: A relational schema consisting of all applicable constraint
 
 Constrained Schema:
 """
+
+    if feedback:
+        system_prompt += f"""
+
+### Previous Feedback for Correction ###
+{feedback}
+Please consider this feedback when generating your response and prioritize addressing these points.
+"""
+
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt},
@@ -378,7 +412,7 @@ Constrained Schema:
     return data
 
 
-def generate_sql_queries(data: dict) -> dict:
+def generate_sql_queries(data: dict, feedback: Optional[str] = None) -> dict:
     system_prompt = f"""
 ### Task ###
 Generate syntactically correct CREATE TABLE queries for the constrained schema provided by the user, specifically for PostGreSQL.
@@ -436,6 +470,15 @@ CREATE TABLE statements for creating the given constrained schema.
 
 SQL Queries for PostGreSQL:
 """
+
+    if feedback:
+        system_prompt += f"""
+
+### Previous Feedback for Correction ###
+{feedback}
+Please consider this feedback when generating your response and prioritize addressing these points.
+"""
+
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt},

@@ -2,8 +2,20 @@ from typing import List, Dict, Any
 import pandas as pd
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
+from pydantic import BaseModel, Field
+import json
 
-from vulcan.utils.llm_helpers import TableTraitsWithName
+import vulcan.generators.metadata as vgm
+from vulcan.utils.llm_helpers import TableTraitsWithName, openai_chat_api_structured
+
+
+class LLMValidationFeedback(BaseModel):
+    feedback: str = Field(
+        description="Detailed feedback on violations and suggested changes if any issues are found. If validation passes, this can be a confirmation message."
+    )
+    continue_processing: bool = Field(
+        description="True if validation passes or issues are minor and can be ignored, False if significant violations are found that require correction."
+    )
 
 
 def _validate_one_to_n_surrogate_pk_auto_increment(
@@ -62,6 +74,119 @@ def _validate_one_to_n_surrogate_pk_auto_increment(
                         f"Details: column_default='{col_default}', is_identity='{is_identity}'"
                     )
                 print(f"Validated auto-increment for {table_name}.{surrogate_pk_col}")
+
+
+def validate_with_llm(
+    data_dict: Dict[str, Any],
+    dataframe_for_sample: pd.DataFrame,
+    max_retries_for_llm_call: int = 1,
+) -> LLMValidationFeedback:
+    """
+    Validates the generated schema, constraints, and traits against a new data sample using an LLM.
+
+    Args:
+        data_dict: Dictionary containing keys like 'queries', 'schema', 'constrained_schema', 'table_traits'.
+        dataframe_for_sample: The original Pandas DataFrame to draw a new sample from.
+        max_retries_for_llm_call: Maximum number of retries for the LLM call if it fails.
+
+    Returns:
+        An LLMValidationFeedback object.
+    """
+    print("Starting LLM-based validation...")
+
+    # Prepare a new data sample
+    new_data_sample_str = vgm.get_dataframe_samples(dataframe_for_sample, 10)
+
+    table_traits_list = data_dict.get("table_traits", [])
+    if table_traits_list and hasattr(table_traits_list[0], "model_dump_json"):
+        table_traits_prompt_string = (
+            "[\n"
+            + ",\n".join(
+                [trait.model_dump_json(indent=2) for trait in table_traits_list]
+            )
+            + "\n]"
+        )
+    elif table_traits_list:
+        table_traits_prompt_string = json.dumps(table_traits_list, indent=2)
+    else:
+        table_traits_prompt_string = "[]"
+
+    system_prompt = """
+### Task ###
+Validate the provided database schema, SQL queries, constraints, and table traits against a sample of raw data. Identify any inconsistencies, violations, or areas for improvement. Specifically, check if:
+1. Any columns in the `New Raw Data Sample` would violate the `Generated Constraints` or `Generated SQL Queries` (e.g., a supposedly UNIQUE column having duplicate values in the sample, data type mismatches, NOT NULL violations).
+2. The `Table Traits` accurately reflect the relationships (1:1 or 1:n) of tables to the raw data, considering the `New Raw Data Sample`.
+3. Column mappings in `Table Traits` are consistent with the `Generated Schema` and the `New Raw Data Sample` column names.
+4. Primary and Foreign Key definitions in `Generated SQL Queries` are logical and correctly implemented based on the `Generated Schema` and `Table Traits`.
+
+### Instructions ###
+- Provide clear, actionable `feedback`. If issues are found, explain what is wrong and suggest specific changes to the schema, constraints, queries, or traits.
+- Set `continue_processing` to `false` if significant issues are found that *must* be corrected. Set it to `true` if all validations pass or if issues are very minor and can be addressed later or ignored.
+- Focus on direct violations observable from the sample data against the provided database artifacts.
+- Do not suggest stylistic changes unless they directly impact correctness or data integrity.
+
+### Output Format ###
+Return a single JSON object strictly matching the following Pydantic model structure:
+```json
+{
+  "feedback": "Detailed feedback...",
+  "continue_processing": boolean
+}
+```
+"""
+
+    user_prompt = f"""
+### Generated Schema ###
+{data_dict.get("schema", "Schema not provided.")}
+
+### Generated Constraints ###
+{data_dict.get("constrained_schema", "Constraints not provided.")}
+
+### Generated SQL Queries ###
+{data_dict.get("queries", "SQL Queries not provided.")}
+
+### Generated Table Traits ###
+{table_traits_prompt_string}
+
+### New Raw Data Sample (for validation) ###
+{new_data_sample_str}
+
+Based on the above, please provide your validation feedback:
+"""
+
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt},
+    ]
+
+    for attempt in range(max_retries_for_llm_call):
+        try:
+            validation_response = openai_chat_api_structured(
+                messages,
+                model="gpt-4.1",
+                temperature=0,
+                seed=43,
+                response_format=LLMValidationFeedback,
+            )
+            print(
+                f">> LLM Validation Feedback: {validation_response.model_dump_json(indent=2)}"
+            )
+            return validation_response
+        except Exception as e:
+            print(
+                f">> ERROR during LLM validation (attempt {attempt + 1}/{max_retries_for_llm_call}): {e}"
+            )
+            if attempt + 1 == max_retries_for_llm_call:
+                # Last attempt failed, return a default "error" feedback
+                return LLMValidationFeedback(
+                    feedback=f"LLM-based validation failed after {max_retries_for_llm_call} attempts due to: {e}. Cannot proceed with this validation step.",
+                    continue_processing=False,
+                )
+    # Should not be reached if loop completes, but as a fallback:
+    return LLMValidationFeedback(
+        feedback="LLM-based validation could not be completed due to an unexpected issue.",
+        continue_processing=False,
+    )
 
 
 def validate_content(
