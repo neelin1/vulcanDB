@@ -1,2 +1,3 @@
-primary_key,foreign_key,unique,check,not_null,default,dataset,tool,execution_time,total_num_constraints,num_tables,no_of_missing_columns,masked
-0,0,0,0,9,0,titanic.csv,csvkit,0.22743892669677734,9,1,0,False
+primary_key,foreign_key,unique
+iphone.csv,FAILED,"Validation Error for 1:n table 'variants': Surrogate PK column 'variant_asin' is not configured for auto-increment. Details: column_default='None', is_identity='NO'"
+spotify.csv,FAILED,'engine'

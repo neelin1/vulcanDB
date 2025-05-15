@@ -1,64 +1,43 @@
-import argparse
-import os
-import time
-
-from benchmarking.utils import write_benchmarking_data
+import argparse, glob, json, os, pandas as pd
 from vulcan.app import run_pipeline
 from vulcan.readers.csv import read_csv
-from vulcan.testers.column import get_missing_columns
-from vulcan.testers.constraint import count_constraints
+from vulcan.database.load import push_data_in_db
+from benchmarking.utils import write_benchmarking_data, collect_drop_stats
 
 
-def run_benchmarking_pipeline(file_name, db_uri, db_type):
-    start_time = time.time()
-    dataframe = read_csv(file_name)
-    response = run_pipeline(dataframe, db_uri, db_type)
-    execution_time = time.time() - start_time
+def run_single_benchmark(csv_path, db_uri, single_table):
+    df = read_csv(csv_path)
+    try:
+        data = run_pipeline(df, db_uri, single_table)
+        engine = data["engine"]  # if you return it; else re-initialise
+        lookup = push_data_in_db(engine, df, data["table_order"], data["table_traits"])
 
-    stats = {}
-    for query in response["queries"]:
-        query_constraints = count_constraints(query)
-        for key in set(stats) | set(query_constraints):
-            stats[key] = stats.get(key, 0) + query_constraints.get(key, 0)
+        drop_stats = collect_drop_stats(lookup)
 
-    no_of_queries = len(response["queries"])
-    no_of_missing_columns = len(get_missing_columns(response["queries"], dataframe))
-    no_total_constraints = sum(stats.values())
-
-    stats.update(
-        {
-            "dataset": os.path.basename(file_name),
-            "tool": "gpt-4-turbo",
-            "execution_time": execution_time,
-            "total_num_constraints": no_total_constraints,
-            "num_tables": no_of_queries,
-            "no_of_missing_columns": no_of_missing_columns,
-            "masked": False,
+        record = {
+            "dataset": os.path.basename(csv_path),
+            "status": "SUCCESS",
+            "rows_total": len(df),
+            **drop_stats,  # flattened dict
         }
-    )
-
-    write_benchmarking_data(stats)
-    return stats
+    except Exception as e:
+        record = {
+            "dataset": os.path.basename(csv_path),
+            "status": "FAILED",
+            "error_message": str(e),
+        }
+    write_benchmarking_data(record)
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Process some arguments.")
-    parser.add_argument(
-        "-f", "--file_name", type=str, help="File name containing SQL queries"
-    )
-    parser.add_argument(
-        "--db_uri", type=str, help="Path to the database file", default=None
-    )
-    parser.add_argument(
-        "--db_type",
-        type=str,
-        choices=["postgres", "sqlite"],
-        help="Type of the database",
-        default="postgres",
-    )
+    p = argparse.ArgumentParser()
+    p.add_argument("--db_uri", required=True)
+    p.add_argument("--single_table", action="store_true")
+    args = p.parse_args()
 
-    args = parser.parse_args()
-    run_benchmarking_pipeline(args.file_name, args.db_uri, args.db_type)
+    for csv in glob.glob("benchmarking/data/*.csv"):
+        print(f"→ benchmarking {csv}")
+        run_single_benchmark(csv, args.db_uri, args.single_table)
 
 
 if __name__ == "__main__":

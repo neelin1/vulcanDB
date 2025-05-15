@@ -1,6 +1,5 @@
 # Misc
 *.db
-data/
 .DS_Store
 .vscode/
 run.html
