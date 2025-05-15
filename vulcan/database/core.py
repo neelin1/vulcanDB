@@ -8,21 +8,6 @@ from sqlalchemy.exc import SQLAlchemyError
 from vulcan.database.load import push_data_in_db
 
 
-def initialize_default_database(db_file: str = "default.db") -> Engine:
-    """
-    Initializes a SQLite database engine with a default or specified database file.
-
-    Parameters:
-    - db_file: Name of the SQLite database file. Defaults to 'default.db'.
-
-    Returns:
-    - SQLAlchemy Engine instance for the SQLite database.
-    """
-    print("Initializing SQLITE Database")
-    db_uri = f"sqlite:///output/{db_file}"
-    return create_engine(db_uri, echo=True, future=True)
-
-
 def initialize_postgres_database(
     db_uri: str, connect_args: Optional[dict] = None, **engine_kwargs
 ) -> Engine:
@@ -47,7 +32,6 @@ def initialize_postgres_database(
 
 def initialize_database(
     db_uri: str,
-    db_type: str = "postgres",
     connect_args: Optional[dict] = None,
     **engine_kwargs,
 ) -> Engine:
@@ -62,12 +46,7 @@ def initialize_database(
     Returns:
     - SQLAlchemy Engine instance.
     """
-    if db_type == "postgres" and db_uri:
-        return initialize_postgres_database(db_uri, connect_args, **engine_kwargs)
-    elif db_type == "sqlite":
-        return initialize_default_database()
-    else:
-        raise ValueError(f"Unsupported db_type: {db_type}")
+    return initialize_postgres_database(db_uri, connect_args, **engine_kwargs)
 
 
 def execute_queries(
@@ -99,7 +78,7 @@ def execute_queries(
             return True, None
         except SQLAlchemyError as e:
             transaction.rollback()
-            return False, e
+            return False, str(e)
 
 
 def reset_database(engine: Engine):
@@ -109,20 +88,3 @@ def reset_database(engine: Engine):
     meta = MetaData()
     meta.reflect(bind=engine)
     meta.drop_all(bind=engine)
-
-
-def populate_database(
-    db_uri: str,
-    table_order: list[str],
-    tables: dict,
-    dataframe: DataFrame,
-    alias_mapping: dict,
-    connect_args: Optional[dict] = None,
-    **engine_kwargs,
-):
-    engine = initialize_database(
-        db_uri=db_uri, db_type="postgres", connect_args=connect_args, **engine_kwargs
-    )
-    execute_queries(engine, table_order, tables)
-    push_data_in_db(engine, dataframe, table_order, alias_mapping)
-    engine.dispose()

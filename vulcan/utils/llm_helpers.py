@@ -373,12 +373,12 @@ Constrained Schema:
 def generate_sql_queries(data: dict) -> dict:
     system_prompt = f"""
 ### Task ###
-Generate syntactically correct CREATE TABLE queries for the constrained schema provided by the user, specifically for {data["database"]}.
+Generate syntactically correct CREATE TABLE queries for the constrained schema provided by the user, specifically for PostGreSQL.
 
 ### Instructions ###
-1. Using the provided constrained schema, generate CREATE TABLE statements for the {data["database"]} database.
+1. Using the provided constrained schema, generate CREATE TABLE statements for the PostGreSQL database.
 2. Ensure each table includes all specified columns, data types, and constraints mentioned in the `Constrained Schema`.
-3. The queries should be syntactically correct to run on a {data["database"]} database.
+3. The queries should be syntactically correct to run on a PostGreSQL database.
 4. Return only the generated queries.
 5. Refrain from using sub-queries in CHECK constraint.
 6. Separate each query with double new lines.
@@ -423,7 +423,7 @@ Generate syntactically correct CREATE TABLE queries for the constrained schema p
 ## Desired Output ###
 CREATE TABLE statements for creating the given constrained schema.
 
-SQL Queries for {data["database"]}:
+SQL Queries for PostGreSQL:
 """
     messages = [
         {"role": "system", "content": system_prompt},
