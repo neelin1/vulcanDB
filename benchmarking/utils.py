@@ -82,6 +82,63 @@ def generate_pie_chart(table_name: str, csv_filename: str, stats: dict, errors: 
     return image_path
 
 
+def generate_overall_pie_chart(
+    aggregated_error_counts: dict,
+    total_dropped_overall: int,
+    total_attempted_overall: int,
+):
+    """
+    Generates and saves a pie chart for overall drop reasons across all CSVs and tables.
+    Returns the path to the saved image, or None if no chart is generated.
+    """
+    ensure_output_dirs()
+
+    if not aggregated_error_counts or total_dropped_overall == 0:
+        logger.info(
+            "No overall chart generated: No aggregated errors or no overall drops."
+        )
+        return None
+
+    labels = []
+    sizes = []
+    for reason, count in aggregated_error_counts.items():
+        labels.append(f"{reason} ({count})")
+        sizes.append(count)
+
+    if not sizes:
+        logger.info("No overall chart generated: No sizes for pie chart.")
+        return None
+
+    plt.figure(figsize=(14, 10))  # Slightly larger for potentially more categories
+    plt.pie(
+        sizes,
+        labels=labels,
+        autopct="%1.1f%%",
+        startangle=140,
+        textprops={"fontsize": 10},
+    )
+
+    chart_title = (
+        f"Overall Drop Reasons (Across All CSVs & Tables)\\n"
+        f"Total Dropped: {total_dropped_overall}/{total_attempted_overall}"
+    )
+    plt.title(chart_title, fontsize=14)
+    plt.axis("equal")
+
+    image_filename = "drops_grand_total_summary.png"
+    image_path = os.path.join(IMAGES_DIR, image_filename)
+
+    try:
+        plt.savefig(image_path, bbox_inches="tight")
+        logger.info(f"Saved overall pie chart to {image_path}")
+    except Exception as e:
+        logger.error(f"Error saving overall pie chart {image_path}: {e}")
+        plt.close()
+        return None
+    plt.close()
+    return image_path
+
+
 def check_table_emptiness(engine, table_name: str) -> bool:
     """Checks if a table is empty. Returns True if empty, False otherwise."""
     try:
@@ -143,6 +200,17 @@ def generate_summary_report(all_csv_results: list):
     report_lines.append(f"  Successfully Processed: {successful_csv_processing_count}")
     report_lines.append(f"  Failed to Process: {failed_csv_processing_count}\n")
 
+    overall_chart_path = None
+    if (
+        overall_total_attempted_records_across_all_csvs > 0
+        and overall_total_dropped_records_across_all_csvs > 0
+    ):
+        overall_chart_path = generate_overall_pie_chart(
+            overall_error_counts_aggregated_across_all_csvs,
+            overall_total_dropped_records_across_all_csvs,
+            overall_total_attempted_records_across_all_csvs,
+        )
+
     if overall_total_attempted_records_across_all_csvs > 0:
         overall_drop_percentage_across_all = (
             overall_total_dropped_records_across_all_csvs
@@ -152,6 +220,11 @@ def generate_summary_report(all_csv_results: list):
             f"Grand Total Drop Percentage (across all tables in all successful CSVs): {overall_drop_percentage_across_all:.2f}% "
             f"({overall_total_dropped_records_across_all_csvs}/{overall_total_attempted_records_across_all_csvs} records)\n"
         )
+
+        if overall_chart_path:
+            report_lines.append(
+                f"Overall Drop Reasons Chart (All CSVs & Tables): {overall_chart_path}\\n"
+            )
 
         if overall_error_counts_aggregated_across_all_csvs:
             report_lines.append(
