@@ -235,7 +235,7 @@ For a single database table, extract its structural traits based on the provided
 ### Instructions for Trait Extraction ###
 1.  **`relation_to_raw`**: Determine if the table has a "1:1" or "1:n" relationship with the raw data rows. This is typically found in the "Traits" section for the table in the schema.
     - Example "1:1": "Traits: - 1:1 correspondence with raw data rows"
-    - Example "1:n": "Traits: - 1:N correspondence with raw data rows"
+    - Example "1:n": "Traits: - 1:N correspondence with raw data rows". Examples of 1:n include look-up tables, and other one-to-many relationships with the raw data.
 
 2.  **`mapping`**: List column mappings ONLY where the database `table_col` name is DIFFERENT from the `raw_csv_col` name.
     - Check the "Columns" section of the table in the schema. Look for mentions like "(direct mapping from raw$csv_column_name)" or "(renamed direct mapping from raw$csv_column_name)".
