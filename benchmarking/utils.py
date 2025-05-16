@@ -314,6 +314,28 @@ def generate_summary_report(all_csv_results: list):
                             f"    Drop Reason Chart: {table_info['chart_path']}"
                         )
 
+                    # Data summary
+                    report_lines.append(
+                        f"    Data after load: {table_info['row_count']} rows"
+                    )
+                    if table_info.get("empty_table_failure"):
+                        report_lines.append(
+                            f"    FAILURE: Table is EMPTY after load attempts."
+                        )
+                    else:
+                        report_lines.append(
+                            f"    Head of table data:\n{table_info['head_data']}"
+                        )
+
+                    sql_query_str = table_info.get("sql_query")
+                    if sql_query_str and sql_query_str != "SQL query not found":
+                        report_lines.append(f"    Executed SQL Query:")
+                        for line in sql_query_str.splitlines():
+                            report_lines.append(
+                                f"      {line}"
+                            )  # Indent each line of the query
+                        report_lines.append("")  # Add a newline after the query block
+
                     # Detailed drop reasons for this table
                     if s.get("errors"):
                         report_lines.append("    Drop Reasons Breakdown:")

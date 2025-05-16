@@ -46,6 +46,7 @@ def run_single_csv_benchmark(csv_path: str, db_uri: str, single_table: bool) -> 
         lookup = pipeline_output["lookup"]
         table_order = pipeline_output["table_order"]
         total_constraints_for_csv = pipeline_output.get("total_constraints_count", 0)
+        table_query_list = pipeline_output.get("queries", {})
 
         # Initialize overall stats for this specific CSV
         csv_total_attempted = 0
@@ -53,12 +54,23 @@ def run_single_csv_benchmark(csv_path: str, db_uri: str, single_table: bool) -> 
         csv_error_breakdown = {}
 
         for table_name in table_order:
+            # Find the SQL query for the current table
+            sql_query_for_table = "SQL query not found"
+            search_pattern = f'CREATE TABLE "{table_name.lower()}"'
+            for query_str in table_query_list:
+                if isinstance(query_str, str) and query_str.strip().startswith(
+                    search_pattern
+                ):
+                    sql_query_for_table = query_str.strip()
+                    break
+
             table_info = {
                 "name": table_name,
                 "stats": {},
                 "chart_path": None,
                 "head_data": "N/A",
                 "row_count": 0,
+                "sql_query": sql_query_for_table,
             }
 
             if table_name not in lookup:

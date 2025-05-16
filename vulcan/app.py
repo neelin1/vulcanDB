@@ -231,4 +231,5 @@ def run_pipeline(dataframe: pd.DataFrame, db_uri: str, single_table: bool):
         "table_traits": table_traits,  # Pass along for consistency if needed
         "dataframe_rows": total_rows,  # Original number of rows in the input dataframe
         "total_constraints_count": total_constraints_count,  # Add the count here
+        "queries": data_dict.get("queries", {}) if data_dict else {},
     }
