@@ -40,17 +40,9 @@ Create a relational database schema from the raw data and structure provided by 
 """
     if data.get("single_table", False):
         system_prompt += """
-14. The user has indicated that only a single table should be created for this database. Adhere strictly to this requirement. Do not create multiple tables."""
+15. The user has indicated that only a single table should be created for this database. Adhere strictly to this requirement. Do not create multiple tables."""
 
-    if feedback:
-        system_prompt += f"""
-
-### Previous Feedback for Correction ###
-{feedback}
-Please consider this feedback when generating your response and prioritize addressing these points.
-"""
-
-    user_prompt = f"""
+    system_prompt += """\n
 ### Input Data ###
 1. raw_data: An example of the raw data that will be store in the schema.
 2. structure: Information about the datatype for each column
@@ -89,9 +81,17 @@ paragraph explaining the table and its relationships with other tables and the r
 ## Explanation:
 ...
 """
+    if feedback:
+        system_prompt += f"""
+
+### Previous Feedback for Correction ###
+{feedback}
+Please consider this feedback when generating your response and prioritize addressing these points.
+"""
+
     user_prompt = f"""
 ### Raw Data Sample ###
-{data['raw_data']}
+{data["raw_data"]}
 
 
 ### Raw Data Structure ###
@@ -100,10 +100,15 @@ paragraph explaining the table and its relationships with other tables and the r
 
 Output Schema:
 """
+
     messages = [
         {"role": "system", "content": system_prompt},
-        {"role": "user", "content": user_prompt},
+        {
+            "role": "user",
+            "content": user_prompt,
+        },
     ]
+
     data["schema"] = openai_chat_api(messages)
     print(">> GENERATED SCHEMA ", data["schema"])
     return data
@@ -226,9 +231,8 @@ def generate_table_traits(data: dict, feedback: Optional[str] = None) -> dict:
     1:n specific details (surrogate PK, natural keys), and dependencies.
     """
     schema_text = data.get("schema", "")
-    raw_data_structure = data.get(
-        "structure", ""
-    )  # Assuming 'structure' holds raw data structure
+    raw_data_structure = data.get("structure", "")
+    raw_data_sample = data.get("raw_data", "")
     table_list = data.get("table_list", [])
 
     if not schema_text or not raw_data_structure or not table_list:
@@ -306,6 +310,9 @@ Please consider this feedback when generating traits for all tables and prioriti
 
 ### Raw Data Structure ###
 {raw_data_structure}
+
+### Raw Data Sample ###
+{raw_data_sample}
 
 ### Target Table Name ###
 {table_name}
@@ -484,7 +491,8 @@ Please consider this feedback when generating your response and prioritize addre
         {"role": "user", "content": user_prompt},
     ]
     queries = openai_chat_api(messages)
-    data["queries"] = format_sql_queries(queries)  # type: ignore
+
+    data["queries"] = format_sql_queries(queries if queries is not None else "")
     print(">> GENERATED QUERIES ", data["queries"])
     return data
 
